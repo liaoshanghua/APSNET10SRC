@@ -1,0 +1,44 @@
+.NET Reactor 混淆 APS 发布说明
+================================
+
+APS 使用 ASP.NET Core，路由格式为 /APSAPI/{action}（action = 方法名）。
+混淆后若重命名 Controller 方法或 Middleware.InvokeAsync，站点将无法启动或接口 404。
+
+已在源码中做的兼容
+------------------
+1. Program.cs：中间件改为编译期委托注册（不依赖反射查找 InvokeAsync）
+2. Obfuscation.cs：Controller / Middleware 禁止「重命名」成员（Reactor 识别 Exclude）
+3. 启动时注册 CodePages（GBK），避免精简系统写 bat 失败
+
+Reactor 建议设置（GUI）
+----------------------
+【必须】
+- 勾选 Obfuscation.cs / Exclude 规则（或手动排除）：
+  - EasyManufacture.Api.Controllers.*   （全部 Controller）
+  - EasyManufacture.Api.Middleware.*      （全部 Middleware）
+  - EasyManufacture.Api.Infrastructure.ApsPreCompressedStaticFileMiddleware
+- 全局规则：永不重命名方法名 Invoke、InvokeAsync
+
+【可选混淆（安全）】
+- Legacy/APSAPIController.LegacyBusiness.cs 的方法体（控制流混淆）
+- 私有方法、私有字段
+
+【勿混淆】
+- 若单独混淆 EasyManufacture.Infrastructure.dll：
+  ApsCoreEngine 的 public 方法名（与 /APSAPI/xxx 对应）不能改名
+- appsettings.json、Deployment 脚本
+
+发布流程
+--------
+1. Visual Studio Release 编译（Reactor 处理 APS.dll / APS.exe）
+2. scripts\Publish-Aps.ps1 -OutputDir .\publish\api -WithRuntime
+3. 服务器整包覆盖，用 APS-启动.bat 启动
+
+验证
+----
+启动后访问：
+  http://服务器:端口/APSAPI/Ping
+  http://服务器:端口/APSAPI/GetRegister
+
+若仍报 No Invoke/InvokeAsync：说明 Reactor 仍改写了 Middleware，
+请更新到含 Program.cs 委托注册的最新 publish 包，或在 Reactor 中关闭对 Middleware 的重命名。

@@ -1,0 +1,21 @@
+appsettings.json 编辑说明（JSON 格式）
+
+1. 反斜杠必须写成双反斜杠 \\
+   错误: "D:\共享文件\产能"
+   正确: "D:\\共享文件\\产能"
+
+2. SQL 本地实例名
+   错误: "Data Source=.\MSSQLSERVER;..."
+   正确: "Data Source=.\\MSSQLSERVER;..."
+   或者: "Data Source=(local);..."
+
+3. 修改后运行 APS-诊断.bat 检查 JSON 是否合法
+
+4. 连接串示例:
+   "MSSQLConnectionString": "Data Source=192.168.1.88;Initial Catalog=APS;User ID=sa;Password=你的密码;TrustServerCertificate=True;MultipleActiveResultSets=True"
+
+5. 授权（Kestrel 自宿主，无需 IIS / 无需配置槽位）
+   - 同一台服务器最多 2 个安装目录（如 C:\publish 生产 + C:\publish-test 测试）
+   - 由程序按安装目录 + 机器指纹自动登记，改 appsettings 无法增加套数
+   - 查看: /APSAPI/GetRegister
+   - 注册: /APSAPI/SeRegister?ssn=授权密钥（每个目录各自一份 register.ini）

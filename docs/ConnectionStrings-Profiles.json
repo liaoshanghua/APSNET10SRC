@@ -1,0 +1,493 @@
+{
+  "_readme": "从 EasyManufacture.Web/Web.config 迁移。切换客户：复制 profiles[].mssql 到 appsettings.json → ConnectionStrings.MSSQLConnectionString（建议加 TrustServerCertificate=True）。",
+  "_source": "EasyManufacture.Web/Web.config",
+  "profiles": [
+    {
+      "name": "未命名_1",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=RD0227;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "未命名_2",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=RX1025;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "电子",
+      "enabled": false,
+      "mssql": "Data Source=192.168.119.99;Initial Catalog=APSALL;user=sa;password=donlim.com",
+      "scm": ""
+    },
+    {
+      "name": "电子TEST",
+      "enabled": false,
+      "mssql": "Data Source=192.168.119.99;Initial Catalog=APSTEST3;user=sa;password=donlim.com",
+      "scm": ""
+    },
+    {
+      "name": "电子本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=dz;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=APSALL;user=sa;password=111111;Connect Timeout=300",
+      "scm": ""
+    },
+    {
+      "name": "EKTEST",
+      "enabled": false,
+      "mssql": "Data Source=192.168.1.203;Initial Catalog=APSTEST;user=sa;password=ekiT-#1437;Connect Timeout=600",
+      "scm": ""
+    },
+    {
+      "name": "EK",
+      "enabled": false,
+      "mssql": "Data Source=192.168.1.165;Initial Catalog=APS;user=sa;password=ekiT-#1437;Connect Timeout=600",
+      "scm": ""
+    },
+    {
+      "name": "EK马来",
+      "enabled": false,
+      "mssql": "Data Source=10.201.196.54;Initial Catalog=APS;user=aps;password=aps#Aps2025;Connect Timeout=600",
+      "scm": ""
+    },
+    {
+      "name": "EKTEST1207",
+      "enabled": false,
+      "mssql": "Data Source=192.168.1.165;Initial Catalog=APS0110;user=sa;password=ekiT-#1437;Connect Timeout=600",
+      "scm": ""
+    },
+    {
+      "name": "EK本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=EK;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "JL本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1\\MSSQLSERVER2019;Initial Catalog=JL0303;user=sa;password=beyond318",
+      "scm": ""
+    },
+    {
+      "name": "JL",
+      "enabled": false,
+      "mssql": "Data Source=192.168.128.160\\MSSQLSERVER2019;Initial Catalog=APS;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "HM",
+      "enabled": false,
+      "mssql": "Data Source=192.168.10.3\\MSSQLSERVER2014;Initial Catalog=APSALL;user=aps;password=aps824;Connect Timeout=30",
+      "scm": ""
+    },
+    {
+      "name": "帕尔福",
+      "enabled": false,
+      "mssql": "Data Source=192.168.8.40;Initial Catalog=APS;user=sa;password=powerful",
+      "scm": ""
+    },
+    {
+      "name": "帕尔福本机",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=PF;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "HM本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=HW;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "乔峰本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1\\MSSQLSERVER2019;Initial Catalog=QF;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "乔峰",
+      "enabled": false,
+      "mssql": "Data Source=192.168.101.228;Initial Catalog=APSALL;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "乔峰TEST",
+      "enabled": false,
+      "mssql": "Data Source=192.168.101.228;Initial Catalog=APSTEST;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "FSL",
+      "enabled": false,
+      "mssql": "Data Source=10.50.18.130;Initial Catalog=APS;user=sa;password=apsfsl2023",
+      "scm": ""
+    },
+    {
+      "name": "金星辉",
+      "enabled": false,
+      "mssql": "Data Source=10.8.0.10;Initial Catalog=APS;user=saa;password=Jxh123456",
+      "scm": ""
+    },
+    {
+      "name": "金星辉test",
+      "enabled": false,
+      "mssql": "Data Source=10.8.0.10;Initial Catalog=APS0322;user=saa;password=Jxh123456",
+      "scm": ""
+    },
+    {
+      "name": "金星辉外网",
+      "enabled": false,
+      "mssql": "Data Source=wx.honorsta.com,31433;Initial Catalog=APS;user=saa;password=Jxh123456;Connect Timeout=600",
+      "scm": ""
+    },
+    {
+      "name": "天宝",
+      "enabled": false,
+      "mssql": "Data Source=172.16.30.213;Initial Catalog=APS;user=sa;password=Tphzaps@123",
+      "scm": ""
+    },
+    {
+      "name": "天宝TEST",
+      "enabled": false,
+      "mssql": "Data Source=172.16.30.213;Initial Catalog=APS1203;user=sa;password=Tphzaps@123;Max Pool Size=300;",
+      "scm": ""
+    },
+    {
+      "name": "天宝本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1\\MSSQLSERVER2019;Initial Catalog=天宝;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "简易测试版",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=HYTY;user=sa;password=111111;Connect Timeout=600",
+      "scm": ""
+    },
+    {
+      "name": "天宝精密",
+      "enabled": false,
+      "mssql": "Data Source=10.172.2.12;Initial Catalog=APS;user=sa;password=Tphkaps@321",
+      "scm": ""
+    },
+    {
+      "name": "瑞能TEST",
+      "enabled": false,
+      "mssql": "Data Source=192.168.1.188;Initial Catalog=APS20250702;user=sa;password=ABCabc123",
+      "scm": ""
+    },
+    {
+      "name": "瑞能",
+      "enabled": false,
+      "mssql": "Data Source=192.168.1.188;Initial Catalog=APS;user=sa;password=ABCabc123",
+      "scm": ""
+    },
+    {
+      "name": "EAST本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1\\MSSQLSERVER2019;Initial Catalog=EAST;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "EAST",
+      "enabled": false,
+      "mssql": "Data Source=192.168.18.76;Initial Catalog=east;user=sa;password=East*890",
+      "scm": ""
+    },
+    {
+      "name": "EASTEST",
+      "enabled": false,
+      "mssql": "Data Source=192.168.18.76;Initial Catalog=APS0616;user=sa;password=East*890",
+      "scm": ""
+    },
+    {
+      "name": "EASTVPN",
+      "enabled": false,
+      "mssql": "Data Source=192.168.18.57,62433;Initial Catalog=east;user=sa;password=East*890",
+      "scm": ""
+    },
+    {
+      "name": "EASTVPN",
+      "enabled": false,
+      "mssql": "Data Source=192.168.18.57,62433;Initial Catalog=EAST0809;user=sa;password=East*890",
+      "scm": ""
+    },
+    {
+      "name": "RX",
+      "enabled": false,
+      "mssql": "Data Source=192.168.0.211;Initial Catalog=APSALL;user=sa;password=mes2019",
+      "scm": ""
+    },
+    {
+      "name": "RX本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=RX;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "百威测试",
+      "enabled": false,
+      "mssql": "Data Source=192.168.99.251;Initial Catalog=APS0724;user=sa;password=BW123456;Connect Timeout=600",
+      "scm": ""
+    },
+    {
+      "name": "百威",
+      "enabled": false,
+      "mssql": "Data Source=192.168.99.251;Initial Catalog=APS;user=sa;password=BW123456;Connect Timeout=600",
+      "scm": ""
+    },
+    {
+      "name": "百威本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=百威0713;user=sa;password=111111;Connect Timeout=600",
+      "scm": ""
+    },
+    {
+      "name": "UT",
+      "enabled": false,
+      "mssql": "Data Source=192.168.110.168;Initial Catalog=APSALL;user=aps;password=aps",
+      "scm": ""
+    },
+    {
+      "name": "UTTEST",
+      "enabled": false,
+      "mssql": "Data Source=192.168.110.168;Initial Catalog=APS0910;user=aps;password=aps",
+      "scm": ""
+    },
+    {
+      "name": "UT本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1\\MSSQLSERVER2019;Initial Catalog=ut;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "ISGO本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1\\MSSQLSERVER2019;Initial Catalog=艾司科;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "ISGO",
+      "enabled": false,
+      "mssql": "Data Source=218.13.39.165,14334;Initial Catalog=BW;user=sa;password=ISGO2025@@",
+      "scm": ""
+    },
+    {
+      "name": "EK多语言版本",
+      "enabled": false,
+      "mssql": "Data Source=218.13.39.165;Initial Catalog=EK;user=sa;password=ISGO2025@@",
+      "scm": ""
+    },
+    {
+      "name": "ISGOOLD",
+      "enabled": false,
+      "mssql": "Data Source=10.233.0.31;Initial Catalog=MOM;user=sa;password=donlim.com",
+      "scm": ""
+    },
+    {
+      "name": "美特",
+      "enabled": false,
+      "mssql": "Data Source=192.168.30.23;Initial Catalog=APS;user=aps;password=aps",
+      "scm": ""
+    },
+    {
+      "name": "美特本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=MEITE;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "本地KD",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=KD0422;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "未命名_52",
+      "enabled": false,
+      "mssql": "Data Source=10.86.10.133;Initial Catalog=APS;user=sa;password=z1x2c3v4#",
+      "scm": ""
+    },
+    {
+      "name": "本地jh",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=JH;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "kedelocalhost",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=kede0111;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "FENDA",
+      "enabled": false,
+      "mssql": "Data Source=192.168.52.51;Initial Catalog=fdwms;user=sa;password=sa",
+      "scm": ""
+    },
+    {
+      "name": "本地FD",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=FDNEW;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "JH",
+      "enabled": false,
+      "mssql": "Data Source=192.168.1.250\\MSSQLSERVER2014;Initial Catalog=JH;user=mes;password=mes",
+      "scm": ""
+    },
+    {
+      "name": "jx",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=JX;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "kede库连接配置",
+      "enabled": false,
+      "mssql": "Data Source=10.86.10.133;Initial Catalog=aps;user=sa;password=z1x2c3v4#",
+      "scm": ""
+    },
+    {
+      "name": "XB云",
+      "enabled": false,
+      "mssql": "Data Source=172.17.218.130;Initial Catalog=jx1213;user=sa;password=donlim2019@",
+      "scm": ""
+    },
+    {
+      "name": "云",
+      "enabled": false,
+      "mssql": "Data Source=139.9.39.8;Initial Catalog=jx1213;user=sa;password=mes2019001",
+      "scm": ""
+    },
+    {
+      "name": "HZ本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=HZ0711;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "未命名_63",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1;Initial Catalog=STK0709;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "HZ",
+      "enabled": false,
+      "mssql": "Data Source=47.107.170.153;Initial Catalog=jx1213;user=sa;password=mes2019",
+      "scm": ""
+    },
+    {
+      "name": "未命名_65",
+      "enabled": false,
+      "mssql": "Data Source=47.107.170.153;Initial Catalog=apsall;user=aps;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "RONGXING",
+      "enabled": false,
+      "mssql": "Data Source=192.168.0.159;Initial Catalog=jx1213;user=sa;password=mes2019",
+      "scm": ""
+    },
+    {
+      "name": "未命名_67",
+      "enabled": false,
+      "mssql": "Data Source=192.168.0.124\\MSSQLSERVER2014;Initial Catalog=jx1213;user=sa;password=ay2019001",
+      "scm": ""
+    },
+    {
+      "name": "未命名_68",
+      "enabled": false,
+      "mssql": "Data Source=192.168.117.95;Initial Catalog=SSNPrinterNew;user=sa;password=aps2015..",
+      "scm": ""
+    },
+    {
+      "name": "未命名_69",
+      "enabled": false,
+      "mssql": "Data Source=192.168.99.251;Initial Catalog=APS;user=sa;password=BW123456",
+      "scm": ""
+    },
+    {
+      "name": "星河本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1\\MSSQLSERVER2019;Initial Catalog=星河0730;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "欧赛",
+      "enabled": false,
+      "mssql": "Data Source=192.168.124.249\\MSSQLSERVER2019,1433;Initial Catalog=APS;user=sa;password=Ousaiaps2025",
+      "scm": ""
+    },
+    {
+      "name": "欧赛外网",
+      "enabled": false,
+      "mssql": "Data Source=122.224.30.230,31433\\MSSQLSERVER2019;Initial Catalog=APS;user=sa;password=Ousaiaps2025",
+      "scm": ""
+    },
+    {
+      "name": "欧赛本机",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1\\MSSQLSERVER2019;Initial Catalog=欧赛;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "大康",
+      "enabled": false,
+      "mssql": "Data Source=192.168.92.230\\MSSQLSERVER2019;Initial Catalog=APSTEST1;user=aps;password=dakangaps",
+      "scm": ""
+    },
+    {
+      "name": "大康本地",
+      "enabled": false,
+      "mssql": "Data Source=127.0.0.1\\MSSQLSERVER2019;Initial Catalog=大康;user=sa;password=111111",
+      "scm": ""
+    },
+    {
+      "name": "越顺",
+      "enabled": false,
+      "mssql": "Data Source=192.168.5.117;Initial Catalog=APS;user=aps;password=aps#Aps2025",
+      "scm": ""
+    },
+    {
+      "name": "盈瑞丰",
+      "enabled": false,
+      "mssql": "Data Source=192.168.1.88;Initial Catalog=APS;user=sa;password=yingruifengaps",
+      "scm": "",
+      "_defaultActive": true
+    },
+    {
+      "name": "盈瑞丰测试",
+      "enabled": false,
+      "mssql": "Data Source=192.168.1.88;Initial Catalog=APS20260428;user=sa;password=yingruifengaps",
+      "scm": ""
+    },
+    {
+      "name": "新瑞能",
+      "enabled": false,
+      "mssql": "Data Source=192.168.151.42\\MSSQLSERVER2019;Initial Catalog=APS;user=sa;password=ABCabc123;Connect Timeout=600",
+      "scm": ""
+    },
+    {
+      "name": "普博",
+      "enabled": false,
+      "mssql": "Data Source=8.134.10.152;Initial Catalog=APS;user=sa;password=pubo2026@001",
+      "scm": ""
+    },
+    {
+      "name": "未命名_81",
+      "enabled": false,
+      "mssql": "Data Source=172.16.1.21\\MSSQLSERVER2019,1433;Initial Catalog=APS;user=sa;password=daye2026@@",
+      "scm": ""
+    }
+  ]
+}

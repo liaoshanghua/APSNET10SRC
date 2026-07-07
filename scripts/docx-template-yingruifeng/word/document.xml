@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+
+    <w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr><w:r><w:t>盈瑞丰 APS 滚动日计划</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Title"/><w:spacing w:after="400"/></w:pPr><w:r><w:rPr><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr><w:t>业务规则说明</w:t></w:r></w:p>
+    <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>适用对象：计划员、生管人员</w:t></w:r></w:p>
+    <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>编制日期：2026年6月12日</w:t></w:r></w:p>
+    <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>系统：盈瑞丰 APS 滚动日计划</w:t></w:r></w:p>
+    <w:p><w:r><w:br w:type="page"/></w:r></w:p>
+
+    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>文档说明</w:t></w:r></w:p>
+    <w:p><w:r><w:t>本文档说明盈瑞丰 APS「滚动日计划」自动计算的业务规则，帮助计划员理解系统如何拆分日计划、如何维护产能与日期，以及手工干预时的注意事项。</w:t></w:r></w:p>
+    <w:p><w:r><w:t>正文第一至十章面向计划员；附录供实施人员与 IT 参考。</w:t></w:r></w:p>
+
+    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>一、功能概述</w:t></w:r></w:p>
+    <w:p><w:r><w:t>滚动日计划功能会根据产线日历、产能、待排数量，自动把每条工序计划拆成每天的计划数量，生成日计划。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>只计算今天及以后的日期。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>计算完成后，滚动日计划页面下方会显示本次计算时间。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>计划员可以手工修改系统计算的数量；若需保留修改结果，应锁定相应计划。</w:t></w:r></w:p>
+
+    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>二、哪些计划参与自动计算</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>2.1 会自动重算</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>已指定产线。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>未锁定。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>需要占用产线工时的工序。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>2.2 不会自动重算</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>已锁定的工序：按现有日计划保留，不重新拆分。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>标记为「不占用工时」的工序：不参与自动拆分。</w:t></w:r></w:p>
+    <w:p><w:r><w:rPr><w:b/></w:rPr><w:t>说明：</w:t></w:r><w:r><w:t>即使锁定不参与重算，其日计划仍会从产线当日产能中扣除占用工时，避免同一条产线、同一天被重复占用。</w:t></w:r></w:p>
+
+    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>三、数量与产能规则</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>3.1 待排数量</w:t></w:r></w:p>
+    <w:p><w:r><w:t>系统使用「未完成数（待排数）」作为待拆分数量，该数量已扣除已完工部分。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>3.2 有效产能</w:t></w:r></w:p>
+    <w:p><w:r><w:t>优先使用计划员维护的产能；若计划员产能为空，则使用 IE 标准产能。</w:t></w:r></w:p>
+    <w:p><w:r><w:t>该回退在数据源视图 V_APS_MOPlanStep4 中已处理：返回的 PCCapacity 已是「计划员产能为空则取 IE 产能」后的值。</w:t></w:r></w:p>
+    <w:p><w:r><w:t>存储过程直接使用视图字段：有效产能 = PCCapacity × 产能系数（默认为 1）。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>3.3 人数</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>日历上的「上班人数」用于计算日计划数量，默认等于组织默认人数，可按日修改。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>SMT 产线人数固定按 1 计算（产能已体现线体因素）。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>3.4 单日最大可排数量</w:t></w:r></w:p>
+    <w:p><w:r><w:t>理论数量 = 有效产能 × 当日剩余可用工时 × 当日上班人数</w:t></w:r></w:p>
+    <w:p><w:r><w:t>实际上限 = 取较小值：理论数量、产品+工序当日产量上限、剩余待排数量。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>3.5 钢网产能</w:t></w:r></w:p>
+    <w:p><w:r><w:t>钢网对 SMT 产能存在约束，但系统目前暂无钢网数据，不参与自动扣减，页面仅做颜色提示，计划员需自行留意。</w:t></w:r></w:p>
+
+    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>四、日期规则</w:t></w:r></w:p>
+    <w:tbl>
+      <w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>
+        <w:top w:val="single" w:sz="4"/><w:left w:val="single" w:sz="4"/>
+        <w:bottom w:val="single" w:sz="4"/><w:right w:val="single" w:sz="4"/>
+        <w:insideH w:val="single" w:sz="4"/><w:insideV w:val="single" w:sz="4"/>
+      </w:tblBorders></w:tblPr>
+      <w:tblGrid><w:gridCol w:w="1800"/><w:gridCol w:w="3200"/><w:gridCol w:w="3600"/></w:tblGrid>
+      <w:tr>
+        <w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>日期类型</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>含义</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>系统处理方式</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>要求开工日</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>计划员填写，表示希望尽早开工</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>仅影响排队先后，不强制从该日开工</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>物料复期</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>采购物料答复的可开工/到货日期</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>硬约束：有值时不能排在该日期之前</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>建议开工日</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>系统推算的最早可排日期</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>受前道工序、物料复期等影响</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>前序开工日</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>上一道工序的实际开工日</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>本道工序不能早于此日</w:t></w:r></w:p></w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>4.1 日期约束优先级（从高到低）</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>物料复期 — 物料未到，不能提前排。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>前道工序 — 后道不能早于前道。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>系统建议开工日。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>要求开工日 — 只影响谁先排，不强制开工日。</w:t></w:r></w:p>
+
+    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>五、工序先后顺序</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>5.1 标准工序顺序</w:t></w:r></w:p>
+    <w:p><w:r><w:t>贴片（SMT）→ 插件 → 焊接 → 组装 → 测试</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>系统中「组装」对应工序链序号 4（CHAIN_ORD=4），包装环节按此规则衔接（下道为组装/包装时 +1 天）。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>订单工序不全（如只有贴片+组装）时，系统跳过不存在的工序，按实际下一道衔接。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>后道工序不能早于前道工序开工。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>5.1.1 下道开工间隔（与系统一致）</w:t></w:r></w:p>
+    <w:p><w:r><w:t>当前工序排完后，系统按下表给同销售单组内下一道写入建议开工日：</w:t></w:r></w:p>
+    <w:tbl>
+      <w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>
+        <w:top w:val="single" w:sz="4"/><w:left w:val="single" w:sz="4"/>
+        <w:bottom w:val="single" w:sz="4"/><w:right w:val="single" w:sz="4"/>
+        <w:insideH w:val="single" w:sz="4"/><w:insideV w:val="single" w:sz="4"/>
+      </w:tblBorders></w:tblPr>
+      <w:tblGrid><w:gridCol w:w="4200"/><w:gridCol w:w="1200"/><w:gridCol w:w="3200"/></w:tblGrid>
+      <w:tr>
+        <w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>条件</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>间隔</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>说明</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>当前为贴片（SMT）批次</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>+1 天</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>PhaseR=1，贴片完成后下道至少隔 1 天</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>组内下一道为组装/包装（CHAIN_ORD=4）</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>+1 天</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>包装按 NextChainOrd=4 判断，非工序名称</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>其他情况（如插件→焊接等）</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>+0 天</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>下道可在前道开工当天衔接</w:t></w:r></w:p></w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>5.2 同一销售单下的多条生产订单</w:t></w:r></w:p>
+    <w:p><w:r><w:t>系统目前按销售单号将相关生产订单串在一起计算前后关系。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>若一个销售单含多个不同成品，或拆成多个半成品订单，前后关系可能不准确。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>可能存在有库存则不生产的情况，导致工序链条缺环。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>有的成品一个生产订单含多道工序；有的拆成多个订单，一个半成品/物料对应一道工序。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>建议：一个销售单尽量对应一个成品、一条清晰的生产链；复杂情况需人工核对或锁定。</w:t></w:r></w:p>
+    <w:p><w:r><w:t>最终链条分组规则需客户确认，确认前维持现有逻辑。</w:t></w:r></w:p>
+
+    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>六、排产排队顺序</w:t></w:r></w:p>
+    <w:p><w:r><w:t>同一产线上，系统大致按以下顺序决定谁先排：</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>产线</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>物料复期 / 要求开工日（越早越优先）</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>计划员设置的显示顺序</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>待排数量</w:t></w:r></w:p>
+    <w:p><w:r><w:t>全量重算时还会考虑工序先后顺序，避免后道工序排到前道工序之前。</w:t></w:r></w:p>
+
+    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>七、计划员操作指南</w:t></w:r></w:p>
+    <w:tbl>
+      <w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>
+        <w:top w:val="single" w:sz="4"/><w:left w:val="single" w:sz="4"/>
+        <w:bottom w:val="single" w:sz="4"/><w:right w:val="single" w:sz="4"/>
+        <w:insideH w:val="single" w:sz="4"/><w:insideV w:val="single" w:sz="4"/>
+      </w:tblBorders></w:tblPr>
+      <w:tblGrid><w:gridCol w:w="3600"/><w:gridCol w:w="5000"/></w:tblGrid>
+      <w:tr>
+        <w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>操作</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>建议</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>修改系统计算的数量</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>若需保留，请锁定</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>修改数量后</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>占用工时会变化；锁定后重算仍会从产线产能扣除</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>填写要求开工日</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>影响排队，不强制开工</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>维护计划员产能</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>优先于 IE 产能使用</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>对前后道关系有疑问</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>先锁定，再联系生管或 IT 核对</w:t></w:r></w:p></w:tc>
+      </w:tr>
+    </w:tbl>
+
+    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>八、自动重算流程</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>标记今天以后待更新的旧日计划。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>加载产线日历，扣除已锁定计划的占用工时。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>按工序类型分批计算（贴片→插件→焊接→组装），再全量重算（含测试等）。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>逐条、逐天拆分待排数量，写入或更新日计划。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>删除未被本轮覆盖的过期日计划。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>回写工序的开始日、结束日、占用工时及展示顺序。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>更新页面计算时间。</w:t></w:r></w:p>
+
+    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>九、常见问题</w:t></w:r></w:p>
+    <w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Q：填了要求开工日，为什么还是从别的那天开始排？</w:t></w:r></w:p>
+    <w:p><w:r><w:t>A：要求开工日只影响排队，不强制开工。还要受物料复期、前道工序、产线产能限制。</w:t></w:r></w:p>
+    <w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Q：贴片排完，或下道是组装/包装，为什么不能立刻做？</w:t></w:r></w:p>
+    <w:p><w:r><w:t>A：系统规则：① 贴片批次完成后下道 +1 天；② 组内下一道工序序号为 4（组装/包装）时 +1 天。插件→焊接等其余衔接一般为当天。</w:t></w:r></w:p>
+    <w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Q：改的数量下次重算没了？</w:t></w:r></w:p>
+    <w:p><w:r><w:t>A：未锁定的会被覆盖，改完请锁定。</w:t></w:r></w:p>
+    <w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Q：同一销售单多个成品，前后道对不上？</w:t></w:r></w:p>
+    <w:p><w:r><w:t>A：当前按销售单串链，多成品时可能不准，需人工核对。</w:t></w:r></w:p>
+    <w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Q：钢网超了为什么还能排？</w:t></w:r></w:p>
+    <w:p><w:r><w:t>A：钢网暂无数据，只做颜色提示，不会自动拦截。</w:t></w:r></w:p>
+
+    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>十、重点提醒</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>待排数量按产能和产线日历自动拆到每天，受当日产量上限限制。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>物料复期和前道工序是硬约束；要求开工日只影响排队。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>改了就要锁定，否则下次重算会被刷掉。</w:t></w:r></w:p>
+
+    <w:p><w:r><w:br w:type="page"/></w:r></w:p>
+
+    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>附录 A：技术规则摘要（实施/IT 参考）</w:t></w:r></w:p>
+    <w:p><w:r><w:t>数据源：视图 V_APS_MOPlanStep4；存储过程：P_新组装计划自动重算For手动。</w:t></w:r></w:p>
+    <w:p><w:r><w:t>参与条件：已分配产线、参与排产、未锁定、需占用工时、状态为待计算、计划日期≥当天。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>A.1 字段对照</w:t></w:r></w:p>
+    <w:tbl>
+      <w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>
+        <w:top w:val="single" w:sz="4"/><w:left w:val="single" w:sz="4"/>
+        <w:bottom w:val="single" w:sz="4"/><w:right w:val="single" w:sz="4"/>
+        <w:insideH w:val="single" w:sz="4"/><w:insideV w:val="single" w:sz="4"/>
+      </w:tblBorders></w:tblPr>
+      <w:tblGrid><w:gridCol w:w="2800"/><w:gridCol w:w="5800"/></w:tblGrid>
+      <w:tr><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>字段</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>含义</w:t></w:r></w:p></w:tc></w:tr>
+      <w:tr><w:tc><w:p><w:r><w:t>OWEQTY</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>未完成数/待排数，已扣 HasQty</w:t></w:r></w:p></w:tc></w:tr>
+      <w:tr><w:tc><w:p><w:r><w:t>PCCapacity</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>有效产能（视图已处理：计划员产能空则取 IE Capacity）</w:t></w:r></w:p></w:tc></w:tr>
+      <w:tr><w:tc><w:p><w:r><w:t>Capacity</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>IE 标准产能，由视图回退逻辑引用</w:t></w:r></w:p></w:tc></w:tr>
+      <w:tr><w:tc><w:p><w:r><w:t>DayUpperCapacity</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>产品+工序当日产量上限</w:t></w:r></w:p></w:tc></w:tr>
+      <w:tr><w:tc><w:p><w:r><w:t>ReplyDate</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>采购物料复期，物料级硬约束</w:t></w:r></w:p></w:tc></w:tr>
+      <w:tr><w:tc><w:p><w:r><w:t>PCDeliveryDate</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>计划员要求开工日，仅排序</w:t></w:r></w:p></w:tc></w:tr>
+      <w:tr><w:tc><w:p><w:r><w:t>Extend16</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>销售单号备注，工序链分组键</w:t></w:r></w:p></w:tc></w:tr>
+      <w:tr><w:tc><w:p><w:r><w:t>Priority</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>工序顺序，全量重算排序用</w:t></w:r></w:p></w:tc></w:tr>
+    </w:tbl>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>A.2 工序衔接天数（存储过程逻辑）</w:t></w:r></w:p>
+    <w:p><w:r><w:t>SuggestedStartDate = 前道 StartDate + CASE WHEN PhaseR=1 OR 下道CHAIN_ORD=4 THEN 1 ELSE 0 END</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>PhaseR=1：当前轮为贴片（SMT）→ 下道 +1 天</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>MinNext.NextChainOrd=4：组内下一道为组装（包装按此判断）→ 下道 +1 天</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>其余：+0 天（当天衔接）</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>A.3 计算公式</w:t></w:r></w:p>
+    <w:p><w:r><w:t>有效产能 = 视图.PCCapacity × 产能系数（PCCapacity 空→Capacity 在视图中完成）</w:t></w:r></w:p>
+    <w:p><w:r><w:t>单日理论数量 = 有效产能 × 剩余工时 × 上班人数</w:t></w:r></w:p>
+    <w:p><w:r><w:t>占用工时 = 当日计划数量 / 有效产能 / 上班人数</w:t></w:r></w:p>
+    <w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>A.4 已知待确认项</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>工序链分组：销售单号 vs 生产订单号，待客户确认。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>同销售单多成品、拆生产订单、有库存不生产时链条可能不清晰。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>钢网产能：无数据，仅前端颜色提示。</w:t></w:r></w:p>
+    <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>计划员改数：须同步占用工时；锁定后重算仍扣工时（待完善）。</w:t></w:r></w:p>
+
+    <w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>附录 B：版本记录</w:t></w:r></w:p>
+    <w:tbl>
+      <w:tblPr><w:tblW w:w="0" w:type="auto"/><w:tblBorders>
+        <w:top w:val="single" w:sz="4"/><w:left w:val="single" w:sz="4"/>
+        <w:bottom w:val="single" w:sz="4"/><w:right w:val="single" w:sz="4"/>
+        <w:insideH w:val="single" w:sz="4"/><w:insideV w:val="single" w:sz="4"/>
+      </w:tblBorders></w:tblPr>
+      <w:tblGrid><w:gridCol w:w="1200"/><w:gridCol w:w="2400"/><w:gridCol w:w="5000"/></w:tblGrid>
+      <w:tr>
+        <w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>版本</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>日期</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>说明</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>1.0</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>2026-06-12</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>初版，基于滚动日计划存储过程及计划员确认规则整理</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>1.1</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>2026-06-15</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>明确包装 +1 天 = NextChainOrd=4（组装），非工序名称匹配</w:t></w:r></w:p></w:tc>
+      </w:tr>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>1.2</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>2026-06-15</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>明确 PCCapacity 空→Capacity 由视图 V_APS_MOPlanStep4 返回，非存储过程处理</w:t></w:r></w:p></w:tc>
+      </w:tr>
+    </w:tbl>
+
+    <w:sectPr>
+      <w:pgSz w:w="11906" w:h="16838"/>
+      <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/>
+    </w:sectPr>
+  </w:body>
+</w:document>

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/EasyManufacture.Api/EasyManufacture.Api.csproj" />
+    <Project Path="src/EasyManufacture.Application/EasyManufacture.Application.csproj" />
+    <Project Path="src/EasyManufacture.Domain/EasyManufacture.Domain.csproj" />
+    <Project Path="src/EasyManufacture.Infrastructure/EasyManufacture.Infrastructure.csproj" />
+    <Project Path="src/EasyManufacture.Licence/EasyManufacture.Licence.csproj" />
+  </Folder>
+</Solution>

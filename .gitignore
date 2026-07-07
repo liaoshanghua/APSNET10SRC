@@ -1,0 +1,34 @@
+# Build outputs
+bin/
+obj/
+publish/
+_publish*/
+_bitmono-test/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Large runtime installers (use scripts/Download-DotNetRuntimePack.ps1)
+deps/dotnet/*.exe
+deps/dotnet/dotnet/
+**/Deployment/runtime/*.exe
+**/Deployment/runtime/dotnet/
+
+# BitMono CLI (use deps/bitmono/README.txt to download)
+deps/bitmono/*.zip
+deps/bitmono/cli/
+
+# Logs and machine-local config
+logs/
+register.ini
+appsettings.Development.json
+
+# Local build error dumps
+build-*.txt
+missing-*.txt
+
+# OS
+Thumbs.db
+.DS_Store

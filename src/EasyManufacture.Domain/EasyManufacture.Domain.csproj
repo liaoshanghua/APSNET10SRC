@@ -1,0 +1,12 @@
+﻿<!-- EasyManufacture.Domain：领域实体与值对象，无外部业务依赖 -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackageId>EasyManufacture.Domain</PackageId>
+    <Description>EasyManufacture 领域层</Description>
+  </PropertyGroup>
+  <Import Project="EasyManufacture.Domain.dotnet_reactor.targets" Condition="Exists('EasyManufacture.Domain.dotnet_reactor.targets')" />
+</Project>

@@ -1,0 +1,24 @@
+﻿<!-- EasyManufacture.Licence：授权注册、AppInfo、SystemLog 等运行时配置 -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackageId>EasyManufacture.Licence</PackageId>
+    <Description>EasyManufacture 授权与全局 AppInfo</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.10" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.8" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="System.Management" Version="10.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\EasyManufacture.Domain\EasyManufacture.Domain.csproj" />
+  </ItemGroup>
+  <Import Project="EasyManufacture.Licence.dotnet_reactor.targets" Condition="Exists('EasyManufacture.Licence.dotnet_reactor.targets')" />
+</Project>

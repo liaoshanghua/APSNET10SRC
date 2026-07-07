@@ -1,0 +1,188 @@
+<!--
+  EasyManufacture.Api（Net10 联调宿主）
+  - APSAPI 业务源码：Legacy/ApsCoreEngine.LegacyApi.cs（scripts/Migrate-ApsApi.ps1，Link 编入 Infrastructure）
+  - APSAPIController：HTTP 路由壳，继承 ApsCoreEngine
+  - APSCore 类库：Infrastructure/ApsCoreEngine.LegacyCore.cs
+  - Windows 部署文件：Deployment/（publish 时自动复制，见 scripts/Publish-Aps.ps1）
+-->
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="..\EasyManufacture.Application\EasyManufacture.Application.csproj" />
+    <ProjectReference Include="..\EasyManufacture.Infrastructure\EasyManufacture.Infrastructure.csproj" />
+    <ProjectReference Include="..\EasyManufacture.Licence\EasyManufacture.Licence.csproj" />
+  </ItemGroup>
+  <!-- 大屏看板静态页：来自旧站 EasyManufacture.Web/APSReport -->
+  <ItemGroup>
+    <Content Include="..\..\..\EasyManufacture.Web\APSReport\**\*">
+      <Link>wwwroot\APSReport\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="10.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="System.Management" Version="10.0.0" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.0" />
+  </ItemGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <AssemblyName>APS</AssemblyName>
+    <EnableLegacyApsApiInApiProject>true</EnableLegacyApsApiInApiProject>
+    <UseWindowsForms>true</UseWindowsForms>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- Reactor 7.5 安装异常时设为 false；修复后改回 true 即可恢复 Release 混淆 -->
+    <EnableReactor>false</EnableReactor>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="Controllers\APSAPIController.LegacyStubs.cs" />
+    <Compile Remove="Controllers\APSAPIController.LegacyCoreStubs.cs" />
+  </ItemGroup>
+  <!-- Deployment/ 为部署脚本唯一源码，build/publish 均复制到输出根目录 -->
+  <ItemGroup>
+    <None Update="app.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <Content Include="Deployment\Install-ApsDependencies.ps1">
+      <Link>Install-ApsDependencies.ps1</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\APS-启动.bat">
+      <Link>APS-启动.bat</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\start-api.bat">
+      <Link>start-api.bat</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\start-api-min.vbs">
+      <Link>start-api-min.vbs</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\Test-ApsDotNetRuntime.ps1">
+      <Link>Test-ApsDotNetRuntime.ps1</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\Test-ApsListenPort.ps1">
+      <Link>Test-ApsListenPort.ps1</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\APS-安装运行时.bat">
+      <Link>APS-安装运行时.bat</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\APS-结束旧进程.bat">
+      <Link>APS-结束旧进程.bat</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\APS-诊断.bat">
+      <Link>APS-诊断.bat</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\Install-ApsAutoStart.ps1">
+      <Link>Install-ApsAutoStart.ps1</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\APS-安装开机自启.bat">
+      <Link>APS-安装开机自启.bat</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\appsettings.配置说明.txt">
+      <Link>appsettings.配置说明.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\Restore-ApsDatabase.ps1">
+      <Link>Restore-ApsDatabase.ps1</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\P_APS_TruncateCoreTablesAfterRestore.sql">
+      <Link>P_APS_TruncateCoreTablesAfterRestore.sql</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\Apply-ApsHotUpdate.ps1">
+      <Link>Apply-ApsHotUpdate.ps1</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\APS-热更新.bat">
+      <Link>APS-热更新.bat</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\runtime\README.txt">
+      <Link>runtime\README.txt</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+  <!-- 每次 publish 强制刷新部署脚本，并复制离线 runtime 安装包 -->
+  <Target Name="CopyApsDeploymentAssets" AfterTargets="Publish">
+    <PropertyGroup>
+      <_DeployDir>$(ProjectDir)Deployment</_DeployDir>
+      <_DepsRuntimeDir>$(ProjectDir)..\..\deps\dotnet</_DepsRuntimeDir>
+    </PropertyGroup>
+    <Copy SourceFiles="$(_DeployDir)\Test-ApsDotNetRuntime.ps1" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\Test-ApsListenPort.ps1" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\APS-安装运行时.bat" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\APS-结束旧进程.bat" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\APS-诊断.bat" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\Install-ApsDependencies.ps1" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\APS-启动.bat" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\start-api.bat" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\start-api-min.vbs" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\Install-ApsAutoStart.ps1" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\APS-安装开机自启.bat" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\appsettings.配置说明.txt" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\Restore-ApsDatabase.ps1" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\P_APS_TruncateCoreTablesAfterRestore.sql" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\Apply-ApsHotUpdate.ps1" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\APS-热更新.bat" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\Reactor-混淆说明.txt" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" Condition="Exists('$(_DeployDir)\Reactor-混淆说明.txt')" />
+    <MakeDir Directories="$(PublishDir)runtime" />
+    <Copy SourceFiles="$(_DeployDir)\runtime\README.txt" DestinationFolder="$(PublishDir)runtime" SkipUnchangedFiles="false" />
+    <!-- Deployment\runtime\ 与 deps\dotnet\ 中的离线包（有则复制） -->
+    <ItemGroup>
+      <_RuntimeExeFromDeploy Include="$(_DeployDir)\runtime\dotnet-runtime-*.exe" />
+      <_RuntimeExeFromDeploy Include="$(_DeployDir)\runtime\aspnetcore-runtime-*.exe" />
+      <_RuntimeExeFromDeploy Include="$(_DeployDir)\runtime\windowsdesktop-runtime-*.exe" />
+      <_RuntimeExeFromDeps Include="$(_DepsRuntimeDir)\dotnet-runtime-*.exe" Condition="Exists('$(_DepsRuntimeDir)')" />
+      <_RuntimeExeFromDeps Include="$(_DepsRuntimeDir)\aspnetcore-runtime-*.exe" Condition="Exists('$(_DepsRuntimeDir)')" />
+      <_RuntimeExeFromDeps Include="$(_DepsRuntimeDir)\windowsdesktop-runtime-*.exe" Condition="Exists('$(_DepsRuntimeDir)')" />
+      <_RuntimeScriptFromDeploy Include="$(_DeployDir)\runtime\dotnet-install.ps1" Condition="Exists('$(_DeployDir)\runtime\dotnet-install.ps1')" />
+      <_RuntimeScriptFromDeps Include="$(_DepsRuntimeDir)\dotnet-install.ps1" Condition="Exists('$(_DepsRuntimeDir)\dotnet-install.ps1')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_RuntimeExeFromDeploy)" DestinationFolder="$(PublishDir)runtime" SkipUnchangedFiles="true" Condition="'@(_RuntimeExeFromDeploy)' != ''" />
+    <Copy SourceFiles="@(_RuntimeExeFromDeps)" DestinationFolder="$(PublishDir)runtime" SkipUnchangedFiles="true" Condition="'@(_RuntimeExeFromDeps)' != ''" />
+    <Copy SourceFiles="@(_RuntimeScriptFromDeploy)" DestinationFolder="$(PublishDir)runtime" SkipUnchangedFiles="true" Condition="'@(_RuntimeScriptFromDeploy)' != ''" />
+    <Copy SourceFiles="@(_RuntimeScriptFromDeps)" DestinationFolder="$(PublishDir)runtime" SkipUnchangedFiles="true" Condition="'@(_RuntimeScriptFromDeps)' != ''" />
+    <Copy SourceFiles="$(_DepsRuntimeDir)\README.txt" DestinationFolder="$(PublishDir)runtime" SkipUnchangedFiles="true" Condition="Exists('$(_DepsRuntimeDir)\README.txt')" />
+    <ItemGroup Condition="Exists('$(_DepsRuntimeDir)\dotnet\dotnet.exe')">
+      <_RuntimePortable Include="$(_DepsRuntimeDir)\dotnet\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_RuntimePortable)" DestinationFolder="$(PublishDir)runtime\dotnet\%(RecursiveDir)" SkipUnchangedFiles="true" Condition="'@(_RuntimePortable)' != ''" />
+    <Exec WorkingDirectory="$(_DeployDir)" Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(_DeployDir)Ensure-DeploymentUtf8Bom.ps1&quot; -TargetDir &quot;$(PublishDir)&quot;" Condition="Exists('$(_DeployDir)Ensure-DeploymentUtf8Bom.ps1')" />
+    <Message Importance="high" Text="APS deployment scripts copied to $(PublishDir)" />
+    <Message Importance="high" Text="Runtime installers copied: @(_RuntimeExeFromDeploy-&gt;'%(Filename)%(Extension)', ';') @(_RuntimeExeFromDeps-&gt;'%(Filename)%(Extension)', ';')" Condition="'@(_RuntimeExeFromDeploy)' != '' Or '@(_RuntimeExeFromDeps)' != ''" />
+    <Warning Condition="!Exists('$(PublishDir)System.Management.dll')" Text="发布目录缺少 System.Management.dll，CPU 授权可能读不到；请确认未在 Reactor 中排除该依赖。" />
+    <Warning Condition="'@(_RuntimeExeFromDeploy)' == '' And '@(_RuntimeExeFromDeps)' == ''" Text="发布目录 runtime\ 无 .NET 安装包。请将 dotnet-runtime / aspnetcore-runtime 的 exe 放入 deps\dotnet\ 或执行 Publish-Aps.ps1 -WithRuntime。" />
+  </Target>
+</Project>

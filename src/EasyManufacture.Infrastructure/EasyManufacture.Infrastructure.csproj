@@ -1,0 +1,100 @@
+﻿<!-- EasyManufacture.Infrastructure：数据访问、APS Legacy、第三方接口（SAP/金蝶/Redis 等） -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 项目引用：打包时自动转为 NuGet 包依赖（Domain / Application / Licence 均需先 pack） -->
+  <ItemGroup>
+    <ProjectReference Include="..\EasyManufacture.Application\EasyManufacture.Application.csproj" />
+    <ProjectReference Include="..\EasyManufacture.Domain\EasyManufacture.Domain.csproj" />
+    <ProjectReference Include="..\EasyManufacture.Licence\EasyManufacture.Licence.csproj" />
+  </ItemGroup>
+  <!-- 第三方 NuGet 与 ASP.NET Core 框架引用 -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Dapper" Version="2.1.79" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.1" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.8" />
+    <PackageReference Include="EPPlus" Version="7.5.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.8" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="NPOI" Version="2.7.5" />
+    <PackageReference Include="iTextSharp" Version="5.5.13.4" />
+    <PackageReference Include="StackExchange.Redis" Version="2.8.58" />
+    <PackageReference Include="AlibabaCloud.SDK.Iot20180120" Version="2.1.2" />
+    <PackageReference Include="AlibabaCloud.OpenApiClient" Version="0.1.11" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.0" />
+  </ItemGroup>
+  <!-- 本地 libs 目录下的原生程序集（SAP RFC、金蝶 WebApi SDK） -->
+  <ItemGroup>
+    <Reference Include="sapnco">
+      <HintPath>..\..\libs\SAP\sapnco.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="sapnco_utils">
+      <HintPath>..\..\libs\SAP\sapnco_utils.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Kingdee.CDP.WebApi.SDK">
+      <HintPath>..\..\libs\Kingdee\Kingdee.CDP.WebApi.SDK.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+  <!-- 打包时随 NuGet 分发 SAP / 金蝶 原生 DLL（运行时由 Reference Private 复制，勿再 CopyToOutputDirectory 以免发布重复） -->
+  <ItemGroup>
+    <None Include="..\..\libs\SAP\*.dll" Pack="true" PackagePath="lib\$(TargetFramework)" Link="%(Filename)%(Extension)" Visible="false" />
+    <None Include="..\..\libs\Kingdee\*.dll" Pack="true" PackagePath="lib\$(TargetFramework)" Link="%(Filename)%(Extension)" Visible="false" />
+  </ItemGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackageId>EasyManufacture.Infrastructure</PackageId>
+    <Description>EasyManufacture 基础设施层（EF、APS Legacy、SAP/金蝶、Redis 等）</Description>
+    <!-- LegacyApi 源码在 EasyManufacture.Api/Legacy（APSAPIController partial），不在 Infrastructure NuGet 包内 -->
+    <EnableLegacyApsApiSource>false</EnableLegacyApsApiSource>
+    <!-- EnableLegacyApsCoreSource：旧 APSCore.APSData 全量逻辑（ApsCoreEngine.LegacyCore.cs，由 scripts/Migrate-ApsCore.ps1 从 APSCore.cs 生成） -->
+    <EnableLegacyApsCoreSource>true</EnableLegacyApsCoreSource>
+  </PropertyGroup>
+  <!-- LEGACY_APS_CORE 预处理器符号：LegacyCore 内 #if 使用 -->
+  <PropertyGroup Condition="'$(EnableLegacyApsCoreSource)' == 'true'">
+    <DefineConstants>$(DefineConstants);LEGACY_APS_CORE</DefineConstants>
+  </PropertyGroup>
+  <!-- SetDt 钩子已并入 Api/APSAPIController.LegacyFull override APSData() -->
+  <ItemGroup>
+    <Compile Remove="Legacy\ApsCoreEngine.YrfDicHooks.cs" />
+  </ItemGroup>
+  <!-- LegacyApi 不在 Infrastructure 编译 -->
+  <ItemGroup>
+    <Compile Remove="Legacy\ApsCoreEngine.LegacyApi.cs" />
+  </ItemGroup>
+  <!-- 与 LegacyApi 互斥的精简 partial（LegacyApi 在 Api 时仍排除） -->
+  <ItemGroup Condition="'$(EnableLegacyApsCoreSource)' == 'true'">
+    <Compile Remove="Legacy\ApsCoreEngine.Menus.cs" />
+    <Compile Remove="Legacy\ApsCoreEngine.YrfExtensions.cs" />
+  </ItemGroup>
+  <!-- EnableLegacyApsCoreSource=false：排除全量 APSCore（LegacyCore.cs） -->
+  <ItemGroup Condition="'$(EnableLegacyApsCoreSource)' != 'true'">
+    <Compile Remove="Legacy\ApsCoreEngine.LegacyCore.cs" />
+  </ItemGroup>
+  <!-- EnableLegacyApsCoreSource=true：排除精简版 ApsData / MSSQLCore，启用 LegacyCore + LegacyFull -->
+  <ItemGroup Condition="'$(EnableLegacyApsCoreSource)' == 'true'">
+    <Compile Remove="Legacy\ApsCoreEngine.Body.cs" />
+    <Compile Remove="Legacy\ApsCoreEngine.ApsData.cs" />
+    <Compile Remove="Legacy\ApsCoreEngine.ApsDataPostProcess.cs" />
+    <Compile Remove="Legacy\ApsCoreEngine.ApsDataFields.cs" />
+    <Compile Remove="Legacy\ApsCoreEngine.Host.cs" />
+    <Compile Remove="Legacy\MSSQLCore.cs" />
+  </ItemGroup>
+  <!-- EnableLegacyApsCoreSource=false：排除 LegacyFull 与 LegacySharedState -->
+  <ItemGroup Condition="'$(EnableLegacyApsCoreSource)' != 'true'">
+    <Compile Remove="Legacy\MSSQLCore.LegacyFull.cs" />
+    <Compile Remove="Legacy\ApsCoreEngine.LegacySharedState.cs" />
+  </ItemGroup>
+  <!-- EnableLegacyApsCoreSource=false：排除旧版 DI 入口（精简模式使用 DependencyInjection.cs） -->
+  <ItemGroup Condition="'$(EnableLegacyApsCoreSource)' != 'true'">
+    <Compile Remove="Legacy\ApsCoreEngine.DependencyInjection.cs" />
+    <Compile Remove="Legacy\EasyManufactureEntities.LegacyAccess.cs" />
+  </ItemGroup>
+  <Import Project="EasyManufacture.Infrastructure.dotnet_reactor.targets" Condition="Exists('EasyManufacture.Infrastructure.dotnet_reactor.targets')" />
+</Project>

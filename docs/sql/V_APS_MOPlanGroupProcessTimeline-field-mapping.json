@@ -1,0 +1,17 @@
+[
+  { "fieldIndex": 1,  "parameterName": "GroupDisplay",      "comment": "群组",     "width": 110 },
+  { "fieldIndex": 2,  "parameterName": "CustomerName",      "comment": "客户",     "width": 200 },
+  { "fieldIndex": 3,  "parameterName": "Code",              "comment": "产品编码", "width": 100 },
+  { "fieldIndex": 4,  "parameterName": "MaterialName",      "comment": "产品名称", "width": 130 },
+  { "fieldIndex": 5,  "parameterName": "PlanQty",           "comment": "数量",     "width": 70 },
+  { "fieldIndex": 6,  "parameterName": "ProcessGroupName",  "comment": "工艺",     "width": 90 },
+  { "fieldIndex": 7,  "parameterName": "PCDeliveryDate",    "comment": "要求开工", "width": 100 },
+  { "fieldIndex": 8,  "parameterName": "SmtStartDate",      "comment": "贴片开始", "width": 100 },
+  { "fieldIndex": 9,  "parameterName": "SmtEndDate",        "comment": "贴片完成", "width": 100 },
+  { "fieldIndex": 10, "parameterName": "DipStartDate",      "comment": "插件开始", "width": 100 },
+  { "fieldIndex": 11, "parameterName": "DipEndDate",        "comment": "插件完成", "width": 100 },
+  { "fieldIndex": 12, "parameterName": "WeldStartDate",     "comment": "焊接开始", "width": 100 },
+  { "fieldIndex": 13, "parameterName": "WeldEndDate",       "comment": "焊接完成", "width": 100 },
+  { "fieldIndex": 14, "parameterName": "AssemblyStartDate", "comment": "组装开始", "width": 100 },
+  { "fieldIndex": 15, "parameterName": "AssemblyEndDate",   "comment": "组装完成", "width": 100 }
+]

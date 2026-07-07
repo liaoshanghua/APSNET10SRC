@@ -1,0 +1,19 @@
+﻿<!-- EasyManufacture.Application：应用服务接口与 DTO，依赖 Domain -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\EasyManufacture.Domain\EasyManufacture.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.8" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackageId>EasyManufacture.Application</PackageId>
+    <Description>EasyManufacture 应用层抽象（ICurrentUser、Aps 服务等）</Description>
+  </PropertyGroup>
+  <Import Project="EasyManufacture.Application.dotnet_reactor.targets" Condition="Exists('EasyManufacture.Application.dotnet_reactor.targets')" />
+</Project>
