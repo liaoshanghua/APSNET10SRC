@@ -118,6 +118,20 @@ public partial class APSAPIController
 
                         break;
                     }
+                case 28668:
+                    // 预排齐套欠料汇总：日期列透视（数据源 APS_OrderForecastForm）
+                    {
+                        setRowDetail = setDetail28668;
+                        setDt = SetDt28668;
+                        break;
+                    }
+                case 28686:
+                    // 大叶：计划一致性月报（取数 7864→日一致性透视）
+                    {
+                        setRowDetail = setDetail28686;
+                        setDt = SetDt28686;
+                        break;
+                    }
                 case 15214:
                     {//正式计划
                         setRowDetail += setDetai15214;
@@ -694,18 +708,17 @@ public partial class APSAPIController
 
                         break;
                     }
+                case 28636:
                 case 28634:
-                    {//SMT周计划
-                        //setRowDetail += setDetail28634;
+                {//DIP周计划
+                        //setRowDetail += setDetail28636;
                         setDt = SetDt28634;
-
                         break;
                     }
-                case 28636:
-                    {//DIP周计划
-                        //setRowDetail += setDetail28636;
-                        setDt = SetDt28636;
-
+                case 28667:
+                    {//采购单预测需求分析（外购PO，布局对齐送货计划17271）
+                        setRowDetail += setDetail28667;
+                        setDt = SetDt28667;
                         break;
                     }
                  case 7833:

@@ -32,6 +32,7 @@ public static class DependencyInjection
 
         // --- 旧站 HTTP 转发（LegacyWeb:ForwardApsData / ForwardAllApsApi）---
         services.AddHttpClient(nameof(WeChatWebhookPushJob));
+        services.AddHttpClient(nameof(DingTalkWebhookPushJob));
         services.AddHttpClient(nameof(GlobalLegacyPushTypeJob));
         services.AddHttpClient(nameof(LegacyApsDataForwarder));
         services.AddHttpClient(nameof(LegacyApsApiForwarder));
@@ -43,6 +44,7 @@ public static class DependencyInjection
         services.AddSingleton<YrfExcelImportJob>();
         services.AddSingleton<IsgoPdfScheduledJob>();
         services.AddSingleton<WeChatWebhookPushJob>();
+        services.AddSingleton<DingTalkWebhookPushJob>();
         services.AddSingleton<EkMoStartJob>();
         services.AddSingleton<SapInterfaceSyncJob>();
         services.AddSingleton<GlobalLegacyPushTypeJob>();

@@ -25,7 +25,7 @@
 
 | 文件 | 说明 |
 |------|------|
-| `docs/ConnectionStrings-Profiles.json` | **81 套**客户连接（`enabled: false`，仅备查） |
+| `docs/ConnectionStrings-Profiles.json` | **81 套**客户连接（`enabled: false`，仅备查）；含 **大叶**、**富来** 等 |
 | `appsettings.json` | 运行时实际使用的连接串 |
 | `scripts/Extract-ConnectionProfiles.js` | 从旧 Web.config 重新导出 profiles |
 

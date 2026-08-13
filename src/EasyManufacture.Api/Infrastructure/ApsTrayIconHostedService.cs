@@ -34,6 +34,13 @@ internal sealed class ApsTrayIconHostedService : IHostedService
         if (!OperatingSystem.IsWindows())
             return Task.CompletedTask;
 
+        // 开机 SYSTEM/Session0 无桌面，托盘不可见；登录会话再启 APS 才会出托盘
+        if (!Environment.UserInteractive || GetWindowsSessionId() == 0)
+        {
+            _logger.LogInformation("非交互会话（Session0/后台）：跳过托盘图标");
+            return Task.CompletedTask;
+        }
+
         var section = _configuration.GetSection("Tray");
         if (!section.GetValue("Enabled", true))
             return Task.CompletedTask;
@@ -64,6 +71,19 @@ internal sealed class ApsTrayIconHostedService : IHostedService
     }
 
     internal static void MarkWebHostReady() => Interlocked.Exchange(ref _webHostReady, 1);
+
+    private static int GetWindowsSessionId()
+    {
+        try
+        {
+            using var process = Process.GetCurrentProcess();
+            return process.SessionId;
+        }
+        catch
+        {
+            return -1;
+        }
+    }
 
     public Task StopAsync(CancellationToken cancellationToken)
     {
@@ -157,6 +177,7 @@ internal sealed class ApsTrayIconHostedService : IHostedService
             menu.Items.Add("数据库还原 / 清空业务表", null, (_, _) => ApsDatabaseRestoreForm.ShowRestoreDialog(_statusForm));
             menu.Items.Add("显示控制台", null, (_, _) => ApsConsoleWindow.Show());
             menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("禁止开机启动", null, (_, _) => DisableAutoStart(_statusForm));
             menu.Items.Add("退出 APS", null, (_, _) => onExit());
             _notifyIcon.ContextMenuStrip = menu;
 
@@ -233,6 +254,27 @@ internal sealed class ApsTrayIconHostedService : IHostedService
         private static void OpenUrl(string url)
         {
             Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+
+        private static void DisableAutoStart(IWin32Window owner)
+        {
+            var confirm = MessageBox.Show(
+                owner,
+                "确定禁止开机启动？\n将删除计划任务 APS / APS-Logon，并阻止下次启动时自动重新注册。",
+                "禁止开机启动",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2);
+            if (confirm != DialogResult.Yes)
+                return;
+
+            var (ok, message) = ApsAutoStartInstaller.TryUninstall();
+            MessageBox.Show(
+                owner,
+                message,
+                "禁止开机启动",
+                MessageBoxButtons.OK,
+                ok ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
         }
 
         private static void WaitAndHideConsole(CancellationToken cancellationToken)

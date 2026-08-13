@@ -1,6 +1,9 @@
 /*
   还原库后清空「指定前缀」的 APS 业务表（保留表结构，删除全部行）。
-  由 scripts/Restore-ApsDatabase.ps1 在 RESTORE 成功后调用。
+  由 scripts/Restore-ApsDatabase.ps1 或托盘「还原/清空库」在验证维护密码后调用。
+
+  维护密码：appsettings.json → DatabaseMaintenance:Password
+  执行前会将密码哈希写入 dbo.APS_DatabaseMaintenance，存储过程校验 @ConfirmPassword。
 
   表名前缀（dbo 下凡 name LIKE 前缀+'%' 的用户表均会 TRUNCATE）：
     APS_Order, APS_Material, APS_PO,
@@ -9,11 +12,47 @@
 SET NOCOUNT ON;
 GO
 
+IF OBJECT_ID(N'dbo.APS_DatabaseMaintenance', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.APS_DatabaseMaintenance (
+        Id int NOT NULL CONSTRAINT PK_APS_DatabaseMaintenance PRIMARY KEY,
+        PasswordHash varbinary(32) NOT NULL
+    );
+    INSERT dbo.APS_DatabaseMaintenance (Id, PasswordHash) VALUES (1, 0x0);
+END
+GO
+
 CREATE OR ALTER PROCEDURE dbo.P_APS_TruncateCoreTablesAfterRestore
+    @ConfirmPassword nvarchar(128)
 AS
 BEGIN
     SET NOCOUNT ON;
     SET XACT_ABORT ON;
+
+    IF @ConfirmPassword IS NULL OR LEN(LTRIM(RTRIM(@ConfirmPassword))) = 0
+    BEGIN
+        RAISERROR(N'需要维护密码参数 @ConfirmPassword。', 16, 1);
+        RETURN;
+    END
+
+    IF NOT EXISTS (
+            SELECT 1
+            FROM dbo.APS_DatabaseMaintenance
+            WHERE Id = 1
+              AND PasswordHash <> 0x0
+        )
+    BEGIN
+        RAISERROR(N'未配置维护密码哈希。请在 appsettings.json 设置 DatabaseMaintenance:Password 后，通过 APS 或 Restore-ApsDatabase.ps1 执行一次。', 16, 1);
+        RETURN;
+    END
+
+    IF HASHBYTES('SHA2_256', @ConfirmPassword) <> (
+            SELECT PasswordHash FROM dbo.APS_DatabaseMaintenance WHERE Id = 1
+        )
+    BEGIN
+        RAISERROR(N'维护密码错误，已拒绝清空业务表。', 16, 1);
+        RETURN;
+    END
 
     DECLARE @prefixes TABLE (
         Prefix sysname NOT NULL PRIMARY KEY

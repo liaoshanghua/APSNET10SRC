@@ -1990,7 +1990,7 @@ WHERE DATA_TYPE = 'datetime'
                     //目前只发现通过keyValueParams需要循环，只实现这个功能
                     string url2 = url;
                     if (string.IsNullOrEmpty(CycleFieldName))
-                    {//本身已经是分页循环的字段了,之间去当前的值就行了
+                    {//本身已经是分页循环的字段了,直接取前的值就行了
                         if (string.IsNullOrEmpty(cycleName))
                         {
                             isRead = false;
@@ -2206,7 +2206,7 @@ INSERT INTO [dbo].[APS_InterfaceSAPOutputDetail]
 
                                         systemLog.SaveLog(SystemLog.SystemLogType.获取ERP数据, InterfaceDescriptionOutput + "使用数据库模式,body:" + bodyString ?? "" + "，记录数：" + count + "，时间：" + DateTime.Now, null, null);
                                         isDelete = false;
-
+                                        resultSQL = "";
                                         continue;
                                     }
                             

@@ -103,6 +103,16 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </Content>
+    <Content Include="Deployment\Uninstall-ApsAutoStart.ps1">
+      <Link>Uninstall-ApsAutoStart.ps1</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Include="Deployment\APS-禁止开机自启.bat">
+      <Link>APS-禁止开机自启.bat</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
     <Content Include="Deployment\appsettings.配置说明.txt">
       <Link>appsettings.配置说明.txt</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -134,6 +144,35 @@
       <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
+  <!--
+    TFM 为 net10.0-windows，默认输出在 bin\$(Configuration)\net10.0-windows。
+    兼容/部署习惯路径：Release 构建与发布后，再同步一份到 bin\$(Configuration)\net10.0。
+  -->
+  <PropertyGroup>
+    <_ApsNet10CompatOutDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\bin\$(Configuration)\net10.0\'))</_ApsNet10CompatOutDir>
+  </PropertyGroup>
+  <Target Name="SyncBuildOutputToNet10Folder" AfterTargets="Build" Condition="'$(TargetFramework)' == 'net10.0-windows' And '$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <_ApsBuildOutFiles Include="$(OutputPath)**\*.*" Exclude="$(OutputPath)publish\**\*.*" />
+    </ItemGroup>
+    <MakeDir Directories="$(_ApsNet10CompatOutDir)" />
+    <Copy SourceFiles="@(_ApsBuildOutFiles)" DestinationFiles="@(_ApsBuildOutFiles->'$(_ApsNet10CompatOutDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+    <Message Importance="high" Text="APS build output synced to $(_ApsNet10CompatOutDir)" />
+  </Target>
+  <Target Name="SyncPublishOutputToNet10Folder" AfterTargets="CopyApsDeploymentAssets" Condition="'$(TargetFramework)' == 'net10.0-windows'">
+    <PropertyGroup>
+      <_ApsNet10CompatPublishDir>$(_ApsNet10CompatOutDir)publish\</_ApsNet10CompatPublishDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <_ApsPublishOutFiles Include="$(PublishDir)**\*.*" />
+    </ItemGroup>
+    <MakeDir Directories="$(_ApsNet10CompatOutDir);$(_ApsNet10CompatPublishDir)" />
+    <!-- 发布包完整副本：net10.0\publish\ -->
+    <Copy SourceFiles="@(_ApsPublishOutFiles)" DestinationFiles="@(_ApsPublishOutFiles->'$(_ApsNet10CompatPublishDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="false" />
+    <!-- 同时把发布内容铺到 net10.0\ 根，便于按该目录直接运行/拷贝 -->
+    <Copy SourceFiles="@(_ApsPublishOutFiles)" DestinationFiles="@(_ApsPublishOutFiles->'$(_ApsNet10CompatOutDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="false" />
+    <Message Importance="high" Text="APS publish output synced to $(_ApsNet10CompatOutDir) and $(_ApsNet10CompatPublishDir)" />
+  </Target>
   <!-- 每次 publish 强制刷新部署脚本，并复制离线 runtime 安装包 -->
   <Target Name="CopyApsDeploymentAssets" AfterTargets="Publish">
     <PropertyGroup>
@@ -151,6 +190,8 @@
     <Copy SourceFiles="$(_DeployDir)\start-api-min.vbs" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
     <Copy SourceFiles="$(_DeployDir)\Install-ApsAutoStart.ps1" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
     <Copy SourceFiles="$(_DeployDir)\APS-安装开机自启.bat" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\Uninstall-ApsAutoStart.ps1" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(_DeployDir)\APS-禁止开机自启.bat" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
     <Copy SourceFiles="$(_DeployDir)\appsettings.配置说明.txt" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
     <Copy SourceFiles="$(_DeployDir)\Restore-ApsDatabase.ps1" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />
     <Copy SourceFiles="$(_DeployDir)\P_APS_TruncateCoreTablesAfterRestore.sql" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="false" />

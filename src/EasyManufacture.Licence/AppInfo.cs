@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 using System.Data;
@@ -822,6 +822,21 @@ public class AppInfo
                     wx = LicenceConfig.Get("WX").ToString() == "1";
                 }
                 return wx;
+            }
+        }
+        /// <summary>
+        /// 是否推送钉钉群机器人
+        /// </summary>
+        public static bool DingTalk
+        {
+            get
+            {
+                bool dingTalk = false;
+                if (LicenceConfig.Get("DingTalk") != null)
+                {
+                    dingTalk = LicenceConfig.Get("DingTalk").ToString() == "1";
+                }
+                return dingTalk;
             }
         }
         /// <summary>

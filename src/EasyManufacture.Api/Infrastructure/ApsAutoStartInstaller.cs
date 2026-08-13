@@ -11,6 +11,7 @@ namespace EasyManufacture.Api.Infrastructure;
 internal static class ApsAutoStartInstaller
 {
     private const string MarkerFileName = ".autostart-installed.json";
+    private const string DisabledTriggerMode = "Disabled";
 
     public static void TryInstall(IConfiguration configuration, ILogger logger)
     {
@@ -30,6 +31,12 @@ internal static class ApsAutoStartInstaller
 
         try
         {
+            if (IsDisabled(publishPath))
+            {
+                logger.LogInformation("开机自启已禁止（{Marker}），跳过自动注册", MarkerFileName);
+                return;
+            }
+
             if (IsAlreadyInstalled(publishPath, taskName))
             {
                 logger.LogDebug("开机自启已注册（任务 {TaskName}），跳过", taskName);
@@ -48,13 +55,20 @@ internal static class ApsAutoStartInstaller
 
             var batPath = ApsStartScriptWriter.WriteStartApiBat(publishPath, port, entryExe, entryDll);
             var taskCommand = ApsStartScriptWriter.GetScheduledTaskCommand(publishPath);
+            var logonBat = ApsStartScriptWriter.WriteStartApiLogonBat(publishPath, port, entryExe, entryDll);
+            var logonTaskName = section.GetValue("LogonTaskName", "APS-Logon") ?? "APS-Logon";
+            var logonCommand = $"cmd.exe /c \"{logonBat}\"";
             var isAdmin = IsAdministrator();
 
             if (atStartup && isAdmin)
             {
                 RegisterTask(taskName, taskCommand, publishPath, atLogOn: false, runAsSystem: true);
-                WriteMarker(publishPath, taskName, "AtStartup");
-                logger.LogInformation("已注册开机自启计划任务 {TaskName}（系统启动 / SYSTEM）", taskName);
+                RegisterTask(logonTaskName, logonCommand, publishPath, atLogOn: true, runAsSystem: false);
+                WriteMarker(publishPath, taskName, "AtStartup+AtLogOn");
+                logger.LogInformation(
+                    "已注册开机自启：{TaskName}（系统启动）+ {LogonTask}（登录后托盘）",
+                    taskName,
+                    logonTaskName);
                 return;
             }
 
@@ -71,7 +85,7 @@ internal static class ApsAutoStartInstaller
 
             if (atLogOn)
             {
-                RegisterTask(taskName, taskCommand, publishPath, atLogOn: true, runAsSystem: false);
+                RegisterTask(taskName, logonCommand, publishPath, atLogOn: true, runAsSystem: false);
                 WriteMarker(publishPath, taskName, "AtLogOn");
                 logger.LogInformation("已注册开机自启计划任务 {TaskName}（用户登录时，端口 {Port}）", taskName, port);
                 return;
@@ -85,6 +99,88 @@ internal static class ApsAutoStartInstaller
         }
     }
 
+    /// <summary>
+    /// 删除 APS / APS-Logon 计划任务，并写入 Disabled 标记，避免下次启动再自动注册。
+    /// </summary>
+    public static (bool Ok, string Message) TryUninstall(IConfiguration? configuration = null)
+    {
+        if (!OperatingSystem.IsWindows())
+            return (false, "仅支持 Windows");
+
+        var section = configuration?.GetSection("AutoStart");
+        var publishPath = AppContext.BaseDirectory.TrimEnd('\\', '/');
+        var taskName = section?.GetValue("TaskName", "APS") ?? "APS";
+        var logonTaskName = section?.GetValue("LogonTaskName", "APS-Logon") ?? "APS-Logon";
+
+        try
+        {
+            WriteMarker(publishPath, taskName, DisabledTriggerMode);
+
+            DeleteTaskIfExists(taskName);
+            DeleteTaskIfExists(logonTaskName);
+
+            if (TaskExists(taskName) || TaskExists(logonTaskName))
+            {
+                if (!IsAdministrator())
+                    TryDeleteTasksElevated(taskName, logonTaskName);
+                else
+                {
+                    DeleteTaskIfExists(taskName);
+                    DeleteTaskIfExists(logonTaskName);
+                }
+            }
+
+            var remain = new List<string>();
+            if (TaskExists(taskName))
+                remain.Add(taskName);
+            if (TaskExists(logonTaskName))
+                remain.Add(logonTaskName);
+
+            if (remain.Count > 0)
+            {
+                return (false,
+                    "已写入「禁止开机启动」标记（下次启动不会再自动注册），"
+                    + $"但计划任务未删干净：{string.Join("、", remain)}。"
+                    + "请以管理员运行「APS-禁止开机自启.bat」。");
+            }
+
+            return (true, "已禁止开机启动：计划任务已删除，下次启动也不会自动注册。");
+        }
+        catch (Exception ex)
+        {
+            try { WriteMarker(publishPath, taskName, DisabledTriggerMode); }
+            catch { /* ignored */ }
+
+            return (false, "禁止开机启动失败：" + ex.Message
+                + "。可尝试以管理员运行「APS-禁止开机自启.bat」。");
+        }
+    }
+
+    public static bool IsAutoStartDisabled()
+    {
+        if (!OperatingSystem.IsWindows())
+            return false;
+        return IsDisabled(AppContext.BaseDirectory.TrimEnd('\\', '/'));
+    }
+
+    private static bool IsDisabled(string publishPath)
+    {
+        var markerPath = Path.Combine(publishPath, MarkerFileName);
+        if (!File.Exists(markerPath))
+            return false;
+
+        try
+        {
+            var marker = JsonSerializer.Deserialize<AutoStartMarker>(File.ReadAllText(markerPath));
+            return marker != null
+                && string.Equals(marker.TriggerMode, DisabledTriggerMode, StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private static bool IsAlreadyInstalled(string publishPath, string taskName)
     {
         var markerPath = Path.Combine(publishPath, MarkerFileName);
@@ -95,17 +191,40 @@ internal static class ApsAutoStartInstaller
         {
             var marker = JsonSerializer.Deserialize<AutoStartMarker>(File.ReadAllText(markerPath));
             if (marker is null
+                || string.Equals(marker.TriggerMode, DisabledTriggerMode, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(marker.TaskName, taskName, StringComparison.OrdinalIgnoreCase)
-                || !string.Equals(NormalizePath(marker.PublishPath), NormalizePath(publishPath), StringComparison.OrdinalIgnoreCase))
+                || !string.Equals(NormalizePath(marker.PublishPath), NormalizePath(publishPath), StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(marker.TriggerMode, "AtStartup+AtLogOn", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
 
-            return TaskExists(taskName);
+            return TaskExists(taskName) && TaskExists("APS-Logon");
         }
         catch
         {
             return false;
+        }
+    }
+
+    private static void TryDeleteTasksElevated(string taskName, string logonTaskName)
+    {
+        var cmd = $"/c schtasks /Delete /TN \"{taskName}\" /F & schtasks /Delete /TN \"{logonTaskName}\" /F";
+        try
+        {
+            using var process = Process.Start(new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = cmd,
+                Verb = "runas",
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            });
+            process?.WaitForExit(60000);
+        }
+        catch
+        {
+            // 用户取消 UAC 等
         }
     }
 

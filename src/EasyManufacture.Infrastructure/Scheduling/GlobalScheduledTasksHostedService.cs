@@ -17,6 +17,7 @@ public sealed class GlobalScheduledTasksHostedService : BackgroundService
     private readonly YrfExcelImportJob _yrfJob;
     private readonly IsgoPdfScheduledJob _isgoJob;
     private readonly WeChatWebhookPushJob _weChatJob;
+    private readonly DingTalkWebhookPushJob _dingTalkJob;
     private readonly EkMoStartJob _ekJob;
     private readonly SapInterfaceSyncJob _sapJob;
     private readonly GlobalLegacyPushTypeJob _legacyJob;
@@ -27,6 +28,7 @@ public sealed class GlobalScheduledTasksHostedService : BackgroundService
         YrfExcelImportJob yrfJob,
         IsgoPdfScheduledJob isgoJob,
         WeChatWebhookPushJob weChatJob,
+        DingTalkWebhookPushJob dingTalkJob,
         EkMoStartJob ekJob,
         SapInterfaceSyncJob sapJob,
         GlobalLegacyPushTypeJob legacyJob)
@@ -36,6 +38,7 @@ public sealed class GlobalScheduledTasksHostedService : BackgroundService
         _yrfJob = yrfJob;
         _isgoJob = isgoJob;
         _weChatJob = weChatJob;
+        _dingTalkJob = dingTalkJob;
         _ekJob = ekJob;
         _sapJob = sapJob;
         _legacyJob = legacyJob;
@@ -52,7 +55,8 @@ public sealed class GlobalScheduledTasksHostedService : BackgroundService
         var loops = new List<Task> { RegisterSapSyncLoop(stoppingToken) };
 
         var pushType = AppInfo.PushType?.Trim() ?? string.Empty;
-        _logger.LogInformation("启动 Global 定时任务，PushType={PushType}, WX={Wx}", pushType, AppInfo.WX);
+        _logger.LogInformation("启动 Global 定时任务，PushType={PushType}, WX={Wx}, DingTalk={DingTalk}",
+            pushType, AppInfo.WX, AppInfo.DingTalk);
 
         switch (pushType)
         {
@@ -111,6 +115,9 @@ public sealed class GlobalScheduledTasksHostedService : BackgroundService
 
         if (AppInfo.WX)
             loops.Add(WeChatLoop(stoppingToken));
+
+        if (AppInfo.DingTalk)
+            loops.Add(DingTalkLoop(stoppingToken));
 
         await Task.WhenAll(loops).ConfigureAwait(false);
     }
@@ -190,6 +197,19 @@ public sealed class GlobalScheduledTasksHostedService : BackgroundService
             runImmediately: false,
             guard,
             token => _weChatJob.RunAsync(token),
+            _logger,
+            ct);
+    }
+
+    private Task DingTalkLoop(CancellationToken ct)
+    {
+        var guard = new OverlappingExecutionGuard();
+        return PeriodicTaskLoop.RunAsync(
+            "钉钉群机器人",
+            TimeSpan.FromMinutes(1),
+            runImmediately: false,
+            guard,
+            token => _dingTalkJob.RunAsync(token),
             _logger,
             ct);
     }

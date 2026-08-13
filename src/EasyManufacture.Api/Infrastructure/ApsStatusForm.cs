@@ -70,6 +70,14 @@ internal sealed class ApsStatusForm : Form
         };
         btnConsole.Click += (_, _) => ApsConsoleWindow.Show();
 
+        var btnDisableAutoStart = new Button
+        {
+            Text = "禁止开机启动",
+            Location = new Point(16, 144),
+            Size = new Size(120, 32)
+        };
+        btnDisableAutoStart.Click += (_, _) => DisableAutoStart();
+
         var btnDb = new Button
         {
             Text = "还原/清空库",
@@ -98,9 +106,31 @@ internal sealed class ApsStatusForm : Form
         Controls.Add(btnOpen);
         Controls.Add(btnLogs);
         Controls.Add(btnConsole);
+        Controls.Add(btnDisableAutoStart);
         Controls.Add(btnDb);
         Controls.Add(btnHide);
         Controls.Add(btnExit);
+    }
+
+    private void DisableAutoStart()
+    {
+        var confirm = MessageBox.Show(
+            this,
+            "确定禁止开机启动？\n将删除计划任务 APS / APS-Logon，并阻止下次启动时自动重新注册。",
+            "禁止开机启动",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question,
+            MessageBoxDefaultButton.Button2);
+        if (confirm != DialogResult.Yes)
+            return;
+
+        var (ok, message) = ApsAutoStartInstaller.TryUninstall();
+        MessageBox.Show(
+            this,
+            message,
+            "禁止开机启动",
+            MessageBoxButtons.OK,
+            ok ? MessageBoxIcon.Information : MessageBoxIcon.Warning);
     }
 
     public void ShowAndActivate()

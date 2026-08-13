@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 
 cd /d "%~dp0"
 
@@ -14,9 +14,9 @@ if exist "%~dp0Install-ApsDependencies.ps1" (
 
 
 
-if exist "%~dp0.dotnet-local-path" (
+if exist "%~dp0\.dotnet-local-path" (
 
-  set /p _DOTNET_DIR=<"%~dp0.dotnet-local-path"
+  set /p _DOTNET_DIR=<"%~dp0\.dotnet-local-path"
 
   set DOTNET_ROOT=%_DOTNET_DIR%
 

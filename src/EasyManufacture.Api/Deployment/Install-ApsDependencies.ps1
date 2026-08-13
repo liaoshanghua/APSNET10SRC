@@ -44,7 +44,12 @@ $dependenciesEnabled = $true
 
 if (Test-Path $appSettingsPath) {
     try {
-        $appJson = Get-Content $appSettingsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $rawJson = Get-Content $appSettingsPath -Raw -Encoding UTF8
+        # appsettings 常含 // 注释，Windows PowerShell ConvertFrom-Json 不支持
+        $rawJson = [regex]::Replace($rawJson, '(?m)^\s*//.*?$', '')
+        $rawJson = [regex]::Replace($rawJson, ',(\s*\})', '$1')
+        $rawJson = [regex]::Replace($rawJson, ',(\s*\])', '$1')
+        $appJson = $rawJson | ConvertFrom-Json
         $dep = $appJson.Dependencies
         if ($dep) {
             if ($null -ne $dep.Enabled) { $dependenciesEnabled = [bool]$dep.Enabled }
@@ -103,19 +108,15 @@ function Ensure-StartApiBat {
 @echo off
 cd /d "%~dp0"
 if not exist logs mkdir logs
+rem Do NOT redirect to deps-install.log - deadlocks with Add-Content inside the ps1.
 if exist "%~dp0Install-ApsDependencies.ps1" (
-  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Install-ApsDependencies.ps1" >> logs\deps-install.log 2>&1
-)
-if exist "%~dp0.dotnet-local-path" (
-  set /p _DOTNET_DIR=<"%~dp0.dotnet-local-path"
-  set DOTNET_ROOT=%_DOTNET_DIR%
-  set PATH=%_DOTNET_DIR%;%PATH%
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Install-ApsDependencies.ps1" >> logs\deps-console.log 2>&1
 )
 set ASPNETCORE_ENVIRONMENT=Production
 set ASPNETCORE_URLS=http://0.0.0.0:$port
-if exist "%~dp0APS.exe" ("%~dp0APS.exe") else (dotnet "%~dp0APS.dll")
+if exist "%~dp0APS.exe" (start "APS" /MIN "%~dp0APS.exe") else (start "APS" /MIN dotnet "%~dp0APS.dll")
 "@
-    [System.IO.File]::WriteAllText($batPath, $batContent, [System.Text.Encoding]::GetEncoding(936))
+    [System.IO.File]::WriteAllText($batPath, $batContent, (New-Object System.Text.UTF8Encoding $false))
     Write-Log "Created missing start-api.bat (port $port)"
 }
 

@@ -4178,6 +4178,235 @@ select  WorkShopName,isNull(sum(PlanQty),0)  as PlanQty, isNull(sum(ConfirmQty),
 
 
         }
+
+        /// <summary>
+        /// 28668 预排齐套欠料汇总：按建议开工/预开工期生成日期列
+        /// </summary>
+        public void SetDt28668(ref DataTable dt)
+        {
+            DateTime startDate = DateTime.Now.Date;
+            DateTime endDate = startDate.AddDays(45);
+            if (jObject != null && jObject.ContainsKey("DynamicDate1"))
+            {
+                JArray jArray = jObject["DynamicDate1"] as JArray;
+                if (jArray != null && jArray.Count >= 2 && !string.IsNullOrEmpty(jArray[0].ToString()))
+                {
+                    startDate = DateTime.Parse(jArray[0].ToString()).Date;
+                    endDate = DateTime.Parse(jArray[1].ToString()).Date;
+                }
+            }
+
+            startDateMin = startDate;
+            endDateMax28668 = endDate;
+
+            id = "'0'";
+            foreach (DataRow row in dt.Rows)
+            {
+                id += ",'" + row["Code"].ToString().Replace("'", "''") + "'";
+            }
+
+            // DemandDate 转 varchar，便于 Select/Compute；区间与列一致
+            DtDetail = SqlHelper.ExecuteDataTable(string.Format(@"
+SELECT M.Code,
+       CAST(A.OrganizeID AS NVARCHAR(50)) AS Extend12,
+       SUM(A.OweQty) AS SumOweQtyForDay,
+       CONVERT(varchar(10), CAST(COALESCE(
+                DATEADD(DAY, -ISNULL(A.InHouseProd, 0), PP.ProcessPlanStartDate),
+                B.PlanStartDate
+            ) AS DATE), 120) AS DemandDate
+FROM   dbo.APS_OrderForecastForm A WITH (NOLOCK)
+       INNER JOIN dbo.APS_Material M WITH (NOLOCK)
+               ON M.MaterialID = A.MaterialID
+       INNER JOIN dbo.APS_Order B WITH (NOLOCK)
+               ON B.OrderID = A.OrderID
+       LEFT JOIN (
+           SELECT OrderID, MIN(StartDate) AS ProcessPlanStartDate
+           FROM   dbo.[V_APS工序计划数据] WITH (NOLOCK)
+           GROUP BY OrderID
+       ) PP ON PP.OrderID = A.OrderID
+WHERE  A.OweQty < 0
+       AND M.Code IN ({0})
+       AND CAST(COALESCE(
+                DATEADD(DAY, -ISNULL(A.InHouseProd, 0), PP.ProcessPlanStartDate),
+                B.PlanStartDate
+            ) AS DATE) >= '{1:yyyy-MM-dd}'
+       AND CAST(COALESCE(
+                DATEADD(DAY, -ISNULL(A.InHouseProd, 0), PP.ProcessPlanStartDate),
+                B.PlanStartDate
+            ) AS DATE) <= '{2:yyyy-MM-dd}'
+GROUP BY M.Code,
+         A.OrganizeID,
+         CAST(COALESCE(
+                DATEADD(DAY, -ISNULL(A.InHouseProd, 0), PP.ProcessPlanStartDate),
+                B.PlanStartDate
+            ) AS DATE)", id, startDate, endDate));
+
+            while (startDate <= endDate)
+            {
+                string prop = string.Format("{0:MM-dd}", startDate);
+                dt.Columns.Add(prop, typeof(string));
+                ElementColumn[0].Add(new ElementTableOuput() { label = prop, prop = prop, width = "80", isEdit = false });
+                startDate = startDate.AddDays(1);
+            }
+            dt.Columns.Add("BColors", typeof(Dictionary<string, string>));
+        }
+
+        /// <summary>
+        /// 28668 预排齐套欠料汇总：行填充日期欠数（区间与 SetDt28668 一致）
+        /// </summary>
+        public void setDetail28668(DataRow dataRow)
+        {
+            DateTime startDate = startDateMin;
+            DateTime endDate = endDateMax28668;
+            if (jObject != null && jObject.ContainsKey("DynamicDate1"))
+            {
+                JArray jArray = jObject["DynamicDate1"] as JArray;
+                if (jArray != null && jArray.Count >= 2 && !string.IsNullOrEmpty(jArray[0].ToString()))
+                {
+                    startDate = DateTime.Parse(jArray[0].ToString()).Date;
+                    endDate = DateTime.Parse(jArray[1].ToString()).Date;
+                }
+            }
+
+            Dictionary<string, string> bColors = new Dictionary<string, string>();
+            string code = dataRow["Code"].ToString().Replace("'", "''");
+            string extend12 = dataRow.Table.Columns.Contains("Extend12")
+                ? dataRow["Extend12"].ToString().Replace("'", "''")
+                : (dataRow.Table.Columns.Contains("OrganizeID") ? dataRow["OrganizeID"].ToString().Replace("'", "''") : "");
+
+            while (startDate <= endDate)
+            {
+                string dayKey = string.Format("{0:yyyy-MM-dd}", startDate);
+                string filter = "Code='" + code + "' AND DemandDate='" + dayKey + "'";
+                if (!string.IsNullOrEmpty(extend12))
+                {
+                    filter += " AND Extend12='" + extend12 + "'";
+                }
+
+                DataRow[] dataRows = DtDetail != null ? DtDetail.Select(filter) : Array.Empty<DataRow>();
+                if (dataRows.Length > 0)
+                {
+                    string col = string.Format("{0:MM-dd}", startDate);
+                    int sumOweQty = Convert.ToInt32(dataRows[0]["SumOweQtyForDay"]);
+                    dataRow[col] = string.Format("{0}", sumOweQty);
+                }
+
+                startDate = startDate.AddDays(1);
+            }
+
+            dataRow["BColors"] = bColors;
+        }
+
+        /// <summary>
+        /// 28686 计划一致性月报：按 DynamicDate1 生成「M月d日」列
+        /// </summary>
+        public void SetDt28686(ref DataTable dt)
+        {
+            DateTime startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+            DateTime endDate = startDate.AddMonths(1).AddDays(-1);
+            if (jObject != null && jObject.ContainsKey("DynamicDate1"))
+            {
+                JArray jArray = jObject["DynamicDate1"] as JArray;
+                if (jArray != null && jArray.Count >= 2 && !string.IsNullOrEmpty(jArray[0].ToString()))
+                {
+                    startDate = DateTime.Parse(jArray[0].ToString()).Date;
+                    endDate = DateTime.Parse(jArray[1].ToString()).Date;
+                }
+            }
+
+            startDateMin = startDate;
+            endDateMax28686 = endDate;
+
+            DtDetail = SqlHelper.ExecuteDataTable(string.Format(@"
+SELECT WorkShopID,
+       WorkShopName,
+       YearMonth,
+       CONVERT(varchar(10), ProductionDate, 120) AS ProductionDate,
+       PlanConsistencyPct
+FROM   dbo.V_APS_PlanConsistencyDayRate WITH (NOLOCK)
+WHERE  ProductionDate >= '{0:yyyy-MM-dd}'
+       AND ProductionDate <= '{1:yyyy-MM-dd}'
+", startDate, endDate));
+
+            while (startDate <= endDate)
+            {
+                string prop = string.Format("{0:MM-dd}", startDate);
+                string label = string.Format("{0}月{1}日", startDate.Month, startDate.Day);
+                if (!dt.Columns.Contains(prop))
+                {
+                    dt.Columns.Add(prop, typeof(string));
+                }
+                ElementColumn[0].Add(new ElementTableOuput()
+                {
+                    label = label,
+                    prop = prop,
+                    width = "70",
+                    isEdit = false
+                });
+                startDate = startDate.AddDays(1);
+            }
+            if (!dt.Columns.Contains("BColors"))
+            {
+                dt.Columns.Add("BColors", typeof(Dictionary<string, string>));
+            }
+        }
+
+        /// <summary>
+        /// 28686 计划一致性月报：行填充日一致性%
+        /// </summary>
+        public void setDetail28686(DataRow dataRow)
+        {
+            DateTime startDate = startDateMin;
+            DateTime endDate = endDateMax28686;
+            if (jObject != null && jObject.ContainsKey("DynamicDate1"))
+            {
+                JArray jArray = jObject["DynamicDate1"] as JArray;
+                if (jArray != null && jArray.Count >= 2 && !string.IsNullOrEmpty(jArray[0].ToString()))
+                {
+                    startDate = DateTime.Parse(jArray[0].ToString()).Date;
+                    endDate = DateTime.Parse(jArray[1].ToString()).Date;
+                }
+            }
+
+            Dictionary<string, string> bColors = new Dictionary<string, string>();
+            string workShopId = dataRow.Table.Columns.Contains("WorkShopID")
+                ? dataRow["WorkShopID"].ToString().Replace("'", "''")
+                : "";
+            string yearMonth = dataRow.Table.Columns.Contains("YearMonth")
+                ? dataRow["YearMonth"].ToString().Replace("'", "''")
+                : "";
+
+            while (startDate <= endDate)
+            {
+                string dayKey = string.Format("{0:yyyy-MM-dd}", startDate);
+                string filter = "ProductionDate='" + dayKey + "'";
+                if (!string.IsNullOrEmpty(workShopId))
+                {
+                    filter += " AND WorkShopID=" + workShopId;
+                }
+                if (!string.IsNullOrEmpty(yearMonth))
+                {
+                    filter += " AND YearMonth='" + yearMonth + "'";
+                }
+
+                DataRow[] dataRows = DtDetail != null ? DtDetail.Select(filter) : Array.Empty<DataRow>();
+                string col = string.Format("{0:MM-dd}", startDate);
+                if (dataRows.Length > 0 && dataRow.Table.Columns.Contains(col))
+                {
+                    dataRow[col] = dataRows[0]["PlanConsistencyPct"] == DBNull.Value
+                        ? ""
+                        : dataRows[0]["PlanConsistencyPct"].ToString();
+                }
+
+                startDate = startDate.AddDays(1);
+            }
+
+            if (dataRow.Table.Columns.Contains("BColors"))
+            {
+                dataRow["BColors"] = bColors;
+            }
+        }
+
         public void setDetail11182(DataRow dataRow)
         {
             DateTime startDate = DateTime.Now;
@@ -9776,6 +10005,9 @@ where ERPStartDate>='{0}' and ERPStartDate<='{1}'", StartDate, EndDate));
         /// 动态日期列的最小单位
         /// </summary>
         DateTime startDateMin = DateTime.Now.Date;
+        DateTime endDateMax28667 = DateTime.Now.Date.AddDays(30);
+        DateTime endDateMax28668 = DateTime.Now.Date.AddDays(45);
+        DateTime endDateMax28686 = DateTime.Now.Date;
         /// <summary>
         /// 送货计划汇总，按线显示
         /// </summary>
@@ -9866,6 +10098,111 @@ where ERPStartDate>='{0}' and ERPStartDate<='{1}'", StartDate, EndDate));
                 if (m != 0)
                 {
                     dataRow[day] = m;
+                }
+
+                startDate = startDate.AddDays(1);
+            }
+
+            dataRow["BColors"] = bColors;
+        }
+
+        /// <summary>
+        /// 采购单预测需求分析：动态日期列（对齐送货计划17271）
+        /// 主表 V_APS_OrderForecastPOByName / 明细 V_APS_OrderForecastPODay
+        /// 字典：28667
+        /// 注意：明细视图含大量历史日，不可用「最早 APSDemandDay」当列起点，否则 setDetail 只填历史 30 天、近日期列全空。
+        /// </summary>
+        public void SetDt28667(ref DataTable dt)
+        {
+            DateTime startDate = DateTime.Now.Date;
+            DateTime endDate = startDate.AddDays(30);
+
+            if (jObject.ContainsKey("DynamicDate1"))
+            {
+                JArray jArray = jObject["DynamicDate1"] as JArray;
+                if (jArray != null && jArray.Count >= 2 && !string.IsNullOrEmpty(jArray[0].ToString()))
+                {
+                    startDate = DateTime.Parse(jArray[0].ToString()).Date;
+                    endDate = DateTime.Parse(jArray[1].ToString()).Date;
+                }
+            }
+
+            // 供 setDetail28667 与列区间一致
+            startDateMin = startDate;
+            endDateMax28667 = endDate;
+
+            dt.Columns.Add("BColors", typeof(Dictionary<string, string>));
+            dt.Columns.Add("分配送货", typeof(decimal));
+            ElementColumn[0].Add(new ElementTableOuput() { label = "分配送货", prop = "分配送货", width = "80", prop2 = "分配送货", routerName = true, isEdit = false, ControlType = "textbox", extend3 = "P" });
+
+            // 日期转 varchar，便于 DataTable.Compute 字符串过滤
+            DtDetail = SqlHelper.ExecuteDataTable(string.Format(@"
+                    SELECT SuplierName,
+                           Extend12,
+                           ItemCode,
+                           CONVERT(varchar(10), APSDemandDay, 120) AS APSDemandDay,
+                           OweQty,
+                           SuplierCode
+                    FROM dbo.V_APS_OrderForecastPODay WITH (NOLOCK)
+                    WHERE APSDemandDay >= '{0:yyyy-MM-dd}'
+                      AND APSDemandDay <= '{1:yyyy-MM-dd}'
+                    ORDER BY APSDemandDay
+            ", startDate, endDate));
+
+            while (startDate <= endDate)
+            {
+                string prop = string.Format("{0:MM-dd}", startDate);
+                dt.Columns.Add(prop, typeof(decimal));
+                ElementColumn[0].Add(new ElementTableOuput() { label = prop, prop = prop, width = "80", prop2 = prop, routerName = true, isEdit = false, ControlType = "textbox", extend3 = "P" });
+                startDate = startDate.AddDays(1);
+            }
+        }
+
+        /// <summary>
+        /// 采购单预测需求分析：行填充日期分配量（字典 28667）
+        /// </summary>
+        public void setDetail28667(DataRow dataRow)
+        {
+            DateTime startDate = startDateMin;
+            DateTime endDate = endDateMax28667;
+            if (jObject.ContainsKey("DynamicDate1"))
+            {
+                JArray jArray = jObject["DynamicDate1"] as JArray;
+                if (jArray != null && jArray.Count >= 2 && !string.IsNullOrEmpty(jArray[0].ToString()))
+                {
+                    startDate = DateTime.Parse(jArray[0].ToString()).Date;
+                    endDate = DateTime.Parse(jArray[1].ToString()).Date;
+                }
+            }
+
+            Dictionary<string, string> bColors = new Dictionary<string, string>();
+            string suplierCode = "";
+            if (!string.IsNullOrEmpty(dataRow["SuplierCode"].ToString()) && dataRow["SuplierCode"].ToString().IndexOf(",") == -1)
+            {
+                suplierCode = " and SuplierCode='" + dataRow["SuplierCode"].ToString().Replace("'", "''") + "'";
+            }
+
+            string itemCode = dataRow["ItemCode"].ToString().Replace("'", "''");
+            string extend12 = dataRow["Extend12"].ToString().Replace("'", "''");
+            string startStr = startDate.ToString("yyyy-MM-dd");
+            string endStr = endDate.ToString("yyyy-MM-dd");
+            string oweQtySumstr = string.Format("{0:G0}", DtDetail.Compute("SUM(OweQty)",
+                $"APSDemandDay >= '{startStr}' AND APSDemandDay <= '{endStr}' AND ItemCode='{itemCode}' AND Extend12='{extend12}'" + suplierCode));
+            decimal oweQtySum;
+            decimal.TryParse(oweQtySumstr, out oweQtySum);
+            dataRow["分配送货"] = oweQtySum;
+
+            while (startDate <= endDate)
+            {
+                string dayKey = string.Format("{0:yyyy-MM-dd}", startDate);
+                string s = string.Format("{0:G0}", DtDetail.Compute("SUM(OweQty)",
+                    "APSDemandDay='" + dayKey + "' AND ItemCode='" + itemCode + "' AND Extend12 ='" + extend12 + "'" + suplierCode));
+                string col = string.Format("{0:MM-dd}", startDate);
+                decimal m;
+                decimal.TryParse(s, out m);
+                if (m != 0)
+                {
+                    dataRow[col] = m;
                 }
 
                 startDate = startDate.AddDays(1);
@@ -24957,44 +25294,25 @@ group by GroupName");
                 }
             }
 
-            // 获取计划数据，包含SalesPlanProcessMaterialDayID
+            // 关联查询，获取 Extend1 和 Remark6
             DtDetail = SqlHelper.ExecuteDataTable(string.Format(@"
-        SELECT PlanDay, PlanQty, 
-               SalesPlanProcessMaterialID, Remark4,PlanQtyWeight,PlanQtyVolume
-        FROM V_APS_SalesPlanProcessMaterialDay                     
-        WHERE PlanDay >= '{0}' AND PlanDay <= '{1}'
-        ORDER BY SalesPlanProcessMaterialID, PlanDay",
-                    startDate.ToString("yyyy-MM-dd"),
-                    endDate.ToString("yyyy-MM-dd")));
+        SELECT d.PlanDay, d.PlanQty, d.SalesPlanProcessMaterialID, d.Remark4, d.Remark6, m.Extend1
+        FROM APS_SalesPlanProcessMaterialDay d
+        INNER JOIN APS_SalesPlanProcessMaterial m ON d.SalesPlanProcessMaterialID = m.SalesPlanProcessMaterialID
+        WHERE d.PlanDay >= '{0}' AND d.PlanDay <= '{1}'
+        ORDER BY d.SalesPlanProcessMaterialID, d.PlanDay",
+                startDate.ToString("yyyy-MM-dd"),
+                endDate.ToString("yyyy-MM-dd")));
 
             dt.Columns.Add("BColors", typeof(Dictionary<string, string>));
 
-            // 页面数据的主键列表
-            //var pageIds = dt.AsEnumerable()
-            //                .Where(r => !string.IsNullOrEmpty(r["SalesPlanProcessMaterialID"]?.ToString()))
-            //                .Select(r => r["SalesPlanProcessMaterialID"].ToString())
-            //                .Distinct()
-            //                .ToList();
-            //if (pageIds.Any())
-            //{
-
-            //if (!dt.Columns.Contains("RowType"))
-            //    dt.Columns.Add("RowType", typeof(string));
-
-            //// === 新增重量行 ===
-            //DataRow weightRow = dt.NewRow();
-            //weightRow["RowType"] = "Weight";
-            //// === 新增体积行 ===
-            //DataRow volumeRow = dt.NewRow();
-            //volumeRow["RowType"] = "Volume";
-
-            // 添加日期列
             DateTime tempDate = startDate;
             while (tempDate <= endDate)
             {
                 string day = tempDate.ToString("MM-dd");
                 string day2 = tempDate.ToString("yyyy-MM-dd");
-                dt.Columns.Add(day2, typeof(decimal));
+                // 列类型改为 string，兼容数值与文本
+                dt.Columns.Add(day2, typeof(string));
                 ElementColumn[0].Add(new ElementTableOuput()
                 {
                     label = day,
@@ -25002,32 +25320,13 @@ group by GroupName");
                     width = "60",
                     prop2 = day2,
                     isEdit = true,
-                    ControlType = "numberbox",
-                    DataType = "decimal",
-                    visible = false,
-                    formatter = "#,##0"
+                    ControlType = "textbox",   // 统一文本框
+                    DataType = "string",
+                    visible = true
                 });
-
-                //string s1 = DtDetail.Compute(
-                //    "SUM(PlanQtyWeight)",
-                //    $"PlanDay = #{day2}# AND SalesPlanProcessMaterialID IN ({string.Join(",", pageIds.Select(id => $"'{id}'"))})"
-                //).ToString();
                 tempDate = tempDate.AddDays(1);
-                //if (decimal.TryParse(s1, out decimal m1))
-                //    weightRow[day2] = Math.Round(m1, 2);
-
-                //string s2 = DtDetail.Compute(
-                //        "SUM(PlanQtyVolume)",
-                //        $"PlanDay = #{day2}# AND SalesPlanProcessMaterialID IN ({string.Join(",", pageIds.Select(id => $"'{id}'"))})"
-                //    ).ToString();
-                //if (decimal.TryParse(s2, out decimal m2))
-                //    volumeRow[day2] = Math.Round(m2, 2);
             }
-            //dt.Rows.Add(weightRow);
-            //dt.Rows.Add(volumeRow);
-            //}
         }
-
         public void setDetail24403(DataRow dataRow)
         {
             DateTime startDate = DateTime.Now.Date;
@@ -25042,171 +25341,320 @@ group by GroupName");
                 }
             }
 
+            long id = Convert.ToInt64(dataRow["SalesPlanProcessMaterialID"]);
+
+            // 从 DtDetail 中获取该材料的 Extend1
+            string ext1 = null;
+            DataRow[] materialRows = DtDetail.Select($"SalesPlanProcessMaterialID = {id}");
+            if (materialRows.Length > 0)
+            {
+                ext1 = materialRows[0]["Extend1"]?.ToString() ?? "";
+            }
+
             Dictionary<string, string> bColors = new Dictionary<string, string>();
             DateTime currentDate = startDate;
-
-            //bool isSumRow = string.IsNullOrEmpty(dataRow["SalesPlanProcessMaterialID"]?.ToString());//最后一行没有SalesPlanProcessMaterialID
 
             while (currentDate <= endDate)
             {
                 string day = currentDate.ToString("yyyy-MM-dd");
-                //if (!isSumRow)
-                //{
-                string filter = $"SalesPlanProcessMaterialID = {dataRow["SalesPlanProcessMaterialID"]} AND PlanDay = #{currentDate.ToString("yyyy-MM-dd")}#";
-
-                string s1 = DtDetail.Compute("SUM(PlanQty)", filter).ToString();
-
-                var col = ElementColumn[0].FirstOrDefault(c => c.prop == day);
-                //if (!string.IsNullOrEmpty(s1) && decimal.TryParse(s1, out decimal m1))
-                //    {
-                //        //col.visible = true;
-                //        dataRow[day] = m1;
-                //    }
-                if (col != null && !string.IsNullOrEmpty(s1) && decimal.TryParse(s1, out decimal m1))
-                {
-                    col.visible = true;
-                    dataRow[day] = m1;
-                }
-
-
+                string filter = $"SalesPlanProcessMaterialID = {id} AND PlanDay = #{currentDate:yyyy-MM-dd}#";
                 DataRow[] rows = DtDetail.Select(filter);
+
                 if (rows.Length > 0)
                 {
-                    string remark4 = rows[0]["Remark4"]?.ToString() ?? "";
-                    // 根据remark4设置背景颜色
-                    switch (remark4)
+                    if (ext1 == "正式提货")
                     {
-                        case "部分满足":
-                            bColors.Add(day, "#FFA5E5"); // 淡红色
-                            break;
-                        case "不满足":
-                            bColors.Add(day, "#FF5252"); // 红色
-                            break;
-                        default:
-                            break;
+                        // 取 PlanQty 赋值
+                        string s1 = rows[0]["PlanQty"].ToString();
+                        if (!string.IsNullOrEmpty(s1) && decimal.TryParse(s1, out decimal m1))
+                        {
+                            dataRow[day] = m1.ToString("#,##0");  // 千分符显示
+                        }
+
+                        // 背景色逻辑
+                        string remark4 = rows[0]["Remark4"]?.ToString() ?? "";
+                        switch (remark4)
+                        {
+                            case "部分满足":
+                                bColors.Add(day, "#FFA5E5");
+                                break;
+                            case "不满足":
+                                bColors.Add(day, "#FF5252");
+                                break;
+                        }
+                    }
+                    else // 非正式提货（到货日期、发运方式等）
+                    {
+                        string remark6 = rows[0]["Remark6"]?.ToString() ?? "";
+                        dataRow[day] = remark6;
                     }
                 }
-                //}
+
                 currentDate = currentDate.AddDays(1);
             }
 
             dataRow["BColors"] = bColors;
         }
-        /// <summary>
-        /// 欧赛需求计划保存
-        /// </summary>
-        /// <returns></returns>
         public string SaveData24403()
         {
             bool result = false;
             string msg = "";
+
             try
             {
                 JArray jArrayData = JsonConvert.DeserializeObject(BodyJson) as JArray;
                 if (jArrayData == null)
                 {
-                    allMsg = "未接收到数据，请确认是否为JSON格式";
+                    msg = "未接收到数据，请确认是否为JSON格式";
                     result = false;
                 }
                 else if (dev_Account == null)
                 {
-                    allMsg = "当前登录信息已经丢失，请刷新页面重新登录";
+                    msg = "当前登录信息已经丢失，请刷新页面重新登录";
                     result = false;
                 }
                 else
                 {
-                    StringBuilder stringBuilder1 = new StringBuilder("DECLARE @COUNT INT;SET @COUNT=0;DECLARE @SalesPlanProcessMaterialDayID BIGINT;");
+                    // 提取日期键
+                    JObject firstObj = jArrayData[0] as JObject;
+                    var dateKeys = firstObj.Properties()
+                        .Select(p => p.Name)
+                        .Where(name => DateTime.TryParseExact(name, "yyyy-MM-dd",
+                                         CultureInfo.InvariantCulture, DateTimeStyles.None, out _))
+                        .OrderBy(name => name)
+                        .ToList();
 
-                    int loopCount = jArrayData[0].Count();
-                    DateTime startDate = DateTime.Now.Date;
-                    string day = startDate.ToString("yyyy-MM-dd");
-
-                    foreach (JObject obj in jArrayData)
+                    if (dateKeys.Count == 0)
                     {
-                        startDate = DateTime.Now.Date;
-                        for (int i = 0; i < loopCount; i++)
+                        msg = "没有需要保存的计划日期";
+                        result = true;
+                        return JsonConvert.SerializeObject(new { result, msg });
+                    }
+
+                    // 收集材料ID
+                    var materialIds = jArrayData
+                        .Select(o => o["SalesPlanProcessMaterialID"]?.ToString())
+                        .Where(id => !string.IsNullOrEmpty(id))
+                        .Distinct()
+                        .ToList();
+
+                    // 查询 Extend1
+                    Dictionary<long, string> extend1Dict = new Dictionary<long, string>();
+                    // 查询限制数量（UnOutQty + FUnOutQty）
+                    Dictionary<long, decimal> limitQtyDict = new Dictionary<long, decimal>();
+
+                    if (materialIds.Any())
+                    {
+                        string ids = string.Join(",", materialIds);
+                        string query = $@"
+                    SELECT SalesPlanProcessMaterialID, Extend1,
+                           ISNULL(UnOutQty,0) + ISNULL(FUnOutQty,0) AS LimitQty
+                    FROM APS_SalesPlanProcessMaterial
+                    WHERE SalesPlanProcessMaterialID IN ({ids})";
+                        DataTable dtMat = SqlHelper.ExecuteDataTable(query);
+                        foreach (DataRow row in dtMat.Rows)
                         {
-                            day = startDate.ToString("yyyy-MM-dd");
-                            decimal.TryParse(
-                                obj[day]?.ToString().Replace(",", "") ?? "0",
-                                NumberStyles.Number,
-                                CultureInfo.InvariantCulture,
-                                out decimal planQty);
-                            stringBuilder1.Append(string.Format(@"
-                                        SET @SalesPlanProcessMaterialDayID = 0
-                                        SELECT @SalesPlanProcessMaterialDayID=SalesPlanProcessMaterialDayID
-                                            FROM APS_SalesPlanProcessMaterialDay
-                                        WHERE SalesPlanProcessMaterialID={4}
-                                            AND PlanDay='{0}';
-                                        IF ISNULL(@SalesPlanProcessMaterialDayID,0)=0
-                                        BEGIN
-                                            INSERT INTO [dbo].[APS_SalesPlanProcessMaterialDay]
-                                                    (   [MaterialID],
-                                                        [PlanQty],
-                                                        [PlanDay],
-                                                        [SalesPlanProcessMaterialID],
-                                                        [CustomerID],
-                                                        [CustomerCode],
-                                                        [CustomerName],
-                                                        [CustomerMaterialCode],
-                                                        [Code],
-                                                        [Status],
-                                                        [CreatedBy],
-                                                        [CreatedByName],
-                                                        [ModifiedBy],
-                                                        [ModifiedByName],
-                                                        [CreatedOn],
-                                                        [ModifyedOn]
-                                                )
-                                            SELECT      [MaterialID],
-                                                        {3},
-                                                        '{0}',
-                                                        [SalesPlanProcessMaterialID],
-                                                        [CustomerID],
-                                                        [CustomerCode],
-                                                        [CustomerName],
-                                                        [CustomerMaterialCode],
-                                                        [Code],
-                                                        1,
-                                                        '{1}',
-                                                        '{2}',
-                                                        '{1}',
-                                                        '{2}',
-                                                        GETDATE(),
-                                                        GETDATE()
-                                            from [dbo].[APS_SalesPlanProcessMaterial]
-                                            where SalesPlanProcessMaterialID={4}
-                                        END
-                                        ELSE
-                                            BEGIN
-                                                UPDATE APS_SalesPlanProcessMaterialDay
-                                            SET PLANQTY={3}
-                                            where SalesPlanProcessMaterialDayID=@SalesPlanProcessMaterialDayID
-                                        END;
-                                        UPDATE APS_SalesPlanProcessMaterial SET ModifyedOn = GETDATE() WHERE SalesPlanProcessMaterialID = {4};
-                            ", day, dev_Account.Account, dev_Account.Name, planQty, obj["SalesPlanProcessMaterialID"]));
-                            startDate = startDate.AddDays(1);
+                            long id = Convert.ToInt64(row["SalesPlanProcessMaterialID"]);
+                            extend1Dict[id] = row["Extend1"]?.ToString() ?? "";
+                            limitQtyDict[id] = Convert.ToDecimal(row["LimitQty"]);
                         }
                     }
 
-                    stringBuilder1.Append(string.Format(@"DELETE FROM APS_SalesPlanProcessMaterialDay WHERE ISNULL(PlanQty,0) = 0 OR PlanDay IS NULL;"));
-                    stringBuilder1.Append(string.Format(@"EXEC [P_需求计划行分配库存];"));
-                    SqlHelper.ExecuteNonQuery(SqlHelper.MSSQLConnectionString, CommandType.Text, stringBuilder1.ToString());
+                    StringBuilder stringBuilder = new StringBuilder(
+                        "DECLARE @COUNT INT;SET @COUNT=0;DECLARE @SalesPlanProcessMaterialDayID BIGINT;");
 
-                    result = true;  // 修正了这里，原代码为false
-                    allMsg = "保存成功";
+                    List<string> skippedIds = new List<string>();
+
+                    foreach (JObject obj in jArrayData)
+                    {
+                        long materialId = obj["SalesPlanProcessMaterialID"].Value<long>();
+                        if (!extend1Dict.TryGetValue(materialId, out string ext1))
+                            ext1 = "";
+
+                        // 仅正式提货进行总量限制检查
+                        if (ext1 == "正式提货")
+                        {
+                            decimal sumNewPlanQty = 0;
+                            foreach (string day in dateKeys)
+                            {
+                                decimal.TryParse(
+                                    obj[day]?.ToString().Replace(",", "") ?? "0",
+                                    NumberStyles.Number,
+                                    CultureInfo.InvariantCulture,
+                                    out decimal planQty);
+                                sumNewPlanQty += planQty;
+                            }
+
+                            if (!limitQtyDict.TryGetValue(materialId, out decimal limitQty))
+                                limitQty = 0;
+
+                            if (sumNewPlanQty > limitQty)
+                            {
+                                skippedIds.Add(materialId.ToString());
+                                continue;
+                            }
+                        }
+
+                        // 逐日处理
+                        foreach (string day in dateKeys)
+                        {
+                            string rawValue = obj[day]?.ToString() ?? "";
+
+                            if (ext1 == "正式提货")
+                            {
+                                decimal.TryParse(
+                                    rawValue.Replace(",", ""),
+                                    NumberStyles.Number,
+                                    CultureInfo.InvariantCulture,
+                                    out decimal planQty);
+
+                                if (planQty == 0)
+                                {
+                                    stringBuilder.Append(string.Format(@"
+                                IF EXISTS (SELECT 1 FROM APS_SalesPlanProcessMaterialDay 
+                                           WHERE SalesPlanProcessMaterialID={0} AND PlanDay='{1}')
+                                BEGIN
+                                    DELETE FROM APS_SalesPlanProcessMaterialDay 
+                                    WHERE SalesPlanProcessMaterialID={0} AND PlanDay='{1}';
+                                    UPDATE APS_SalesPlanProcessMaterial 
+                                    SET ModifyedOn = GETDATE(), PlanModifyedOn = GETDATE() 
+                                    WHERE SalesPlanProcessMaterialID = {0};
+                                END", materialId, day));
+                                }
+                                else
+                                {
+                                    stringBuilder.Append(string.Format(@"
+                                SET @SalesPlanProcessMaterialDayID = 0
+                                SELECT @SalesPlanProcessMaterialDayID=SalesPlanProcessMaterialDayID
+                                    FROM APS_SalesPlanProcessMaterialDay
+                                WHERE SalesPlanProcessMaterialID={4} AND PlanDay='{0}';
+                                IF ISNULL(@SalesPlanProcessMaterialDayID,0)=0
+                                BEGIN
+                                    INSERT INTO [dbo].[APS_SalesPlanProcessMaterialDay]
+                                            (MaterialID,PlanQty,PlanDay,SalesPlanProcessMaterialID,
+                                             CustomerID,CustomerCode,CustomerName,CustomerMaterialCode,Code,Status,
+                                             CreatedBy,CreatedByName,ModifiedBy,ModifiedByName,CreatedOn,ModifyedOn)
+                                    SELECT MaterialID,{3},'{0}',SalesPlanProcessMaterialID,
+                                           CustomerID,CustomerCode,CustomerName,CustomerMaterialCode,Code,1,
+                                           '{1}','{2}','{1}','{2}',GETDATE(),GETDATE()
+                                    FROM [dbo].[APS_SalesPlanProcessMaterial]
+                                    WHERE SalesPlanProcessMaterialID={4};
+
+                                    UPDATE APS_SalesPlanProcessMaterial 
+                                    SET ModifyedOn = GETDATE(), PlanModifyedOn = GETDATE() 
+                                    WHERE SalesPlanProcessMaterialID = {4};
+                                END
+                                ELSE
+                                BEGIN
+                                    UPDATE APS_SalesPlanProcessMaterialDay
+                                    SET PLANQTY = {3}
+                                    WHERE SalesPlanProcessMaterialDayID = @SalesPlanProcessMaterialDayID
+                                      AND ISNULL(PLANQTY, 0) <> {3};
+
+                                    IF @@ROWCOUNT > 0
+                                    BEGIN
+                                        UPDATE APS_SalesPlanProcessMaterial 
+                                        SET ModifyedOn = GETDATE(), PlanModifyedOn = GETDATE() 
+                                        WHERE SalesPlanProcessMaterialID = {4};
+                                    END
+                                    ELSE
+                                    BEGIN
+                                        UPDATE APS_SalesPlanProcessMaterial 
+                                        SET ModifyedOn = GETDATE() 
+                                        WHERE SalesPlanProcessMaterialID = {4};
+                                    END
+                                END;", day, dev_Account.Account, dev_Account.Name, planQty, materialId));
+                                }
+                            }
+                            else // 非正式提货 → 保存 Remark6
+                            {
+                                string remark6 = rawValue?.Trim() ?? "";
+                                remark6 = remark6.Replace("'", "''"); // 转义单引号
+
+                                if (string.IsNullOrEmpty(remark6))
+                                {
+                                    stringBuilder.Append(string.Format(@"
+                                IF EXISTS (SELECT 1 FROM APS_SalesPlanProcessMaterialDay 
+                                           WHERE SalesPlanProcessMaterialID={0} AND PlanDay='{1}')
+                                BEGIN
+                                    DELETE FROM APS_SalesPlanProcessMaterialDay 
+                                    WHERE SalesPlanProcessMaterialID={0} AND PlanDay='{1}';
+                                    UPDATE APS_SalesPlanProcessMaterial 
+                                    SET ModifyedOn = GETDATE(), PlanModifyedOn = GETDATE() 
+                                    WHERE SalesPlanProcessMaterialID = {0};
+                                END", materialId, day));
+                                }
+                                else
+                                {
+                                    stringBuilder.Append(string.Format(@"
+                                SET @SalesPlanProcessMaterialDayID = 0
+                                SELECT @SalesPlanProcessMaterialDayID=SalesPlanProcessMaterialDayID
+                                    FROM APS_SalesPlanProcessMaterialDay
+                                WHERE SalesPlanProcessMaterialID={4} AND PlanDay='{0}';
+                                IF ISNULL(@SalesPlanProcessMaterialDayID,0)=0
+                                BEGIN
+                                    INSERT INTO [dbo].[APS_SalesPlanProcessMaterialDay]
+                                            (MaterialID,PlanQty,PlanDay,SalesPlanProcessMaterialID,
+                                             CustomerID,CustomerCode,CustomerName,CustomerMaterialCode,Code,Status,Remark6,
+                                             CreatedBy,CreatedByName,ModifiedBy,ModifiedByName,CreatedOn,ModifyedOn)
+                                    SELECT MaterialID,0,'{0}',SalesPlanProcessMaterialID,
+                                           CustomerID,CustomerCode,CustomerName,CustomerMaterialCode,Code,1,'{3}',
+                                           '{1}','{2}','{1}','{2}',GETDATE(),GETDATE()
+                                    FROM [dbo].[APS_SalesPlanProcessMaterial]
+                                    WHERE SalesPlanProcessMaterialID={4};
+
+                                    UPDATE APS_SalesPlanProcessMaterial 
+                                    SET ModifyedOn = GETDATE(), PlanModifyedOn = GETDATE() 
+                                    WHERE SalesPlanProcessMaterialID = {4};
+                                END
+                                ELSE
+                                BEGIN
+                                    UPDATE APS_SalesPlanProcessMaterialDay
+                                    SET Remark6 = '{3}'
+                                    WHERE SalesPlanProcessMaterialDayID = @SalesPlanProcessMaterialDayID
+                                      AND ISNULL(Remark6, '') <> '{3}';
+
+                                    IF @@ROWCOUNT > 0
+                                    BEGIN
+                                        UPDATE APS_SalesPlanProcessMaterial 
+                                        SET ModifyedOn = GETDATE(), PlanModifyedOn = GETDATE() 
+                                        WHERE SalesPlanProcessMaterialID = {4};
+                                    END
+                                    ELSE
+                                    BEGIN
+                                        UPDATE APS_SalesPlanProcessMaterial 
+                                        SET ModifyedOn = GETDATE() 
+                                        WHERE SalesPlanProcessMaterialID = {4};
+                                    END
+                                END;", day, dev_Account.Account, dev_Account.Name, remark6, materialId));
+                                }
+                            }
+                        }
+                    }
+
+                    // 清理：仅删除 Extend1='正式提货' 且 PlanQty=0 的无效记录
+                    stringBuilder.Append(@"
+                DELETE d 
+                FROM APS_SalesPlanProcessMaterialDay d
+                INNER JOIN APS_SalesPlanProcessMaterial m ON d.SalesPlanProcessMaterialID = m.SalesPlanProcessMaterialID
+                WHERE ISNULL(d.PlanQty,0) = 0 AND m.Extend1 = '正式提货';
+                DELETE FROM APS_SalesPlanProcessMaterialDay WHERE PlanDay IS NULL;
+                EXEC [P_需求计划行分配库存];");
+
+                    SqlHelper.ExecuteNonQuery(SqlHelper.MSSQLConnectionString, CommandType.Text, stringBuilder.ToString());
+
+                    result = true;
+                    msg = skippedIds.Any()
+                        ? $"保存成功，但以下材料计划总量超出可用量，未做保存：{string.Join(",", skippedIds)}"
+                        : "保存成功";
                 }
             }
             catch (Exception ex)
             {
-                allMsg = ex.Message;
+                msg = ex.Message;
             }
 
-            return JsonConvert.SerializeObject(new
-            {
-                result,
-                msg = allMsg
-            });
+            return JsonConvert.SerializeObject(new { result, msg });
         }
         public void SetDt24415(ref DataTable dt)
         {
@@ -26504,23 +26952,52 @@ group by PackPlanDay,SalesPlanProcessMaterialID
         #region 盈瑞丰
         public void SetDt28574(ref DataTable dt)
         {
+            // 1. 从 JSON 中提取参数
+            string LineName = jObject["LineName"]?.ToString()?.Trim() ?? string.Empty;
 
-            // 获取计划数据，包含SalesPlanProcessMaterialDayID
-            DtDetail = SqlHelper.ExecuteDataTable(string.Format(@"
-            SELECT *
-            FROM   V_APS_NIDBEPosition
-            "));
+            // 2. 动态构建过滤条件
+            string whereClause = string.Empty;
+            if (!string.IsNullOrEmpty(LineName))
+            {
+                // 建议：如果 LineName 可能包含单引号，请使用参数化查询防止 SQL 注入
+                whereClause = $"WHERE LineName = '{LineName}'";
+            }
+
+            // 3. 执行查询
+            DtDetail = SqlHelper.ExecuteDataTable($@"
+                SELECT
+                PositionID
+                ,PositionName
+                FROM V_APS_NOIDBEPosition
+                {whereClause}
+                GROUP BY PositionID
+                ,PositionName
+            ");
+            //// 获取计划数据，包含SalesPlanProcessMaterialDayID
+            //DtDetail = SqlHelper.ExecuteDataTable(string.Format(@"
+            //SELECT *
+            //FROM   V_APS_NIDBEPosition
+            //"));
 
             DtDetail1 = SqlHelper.ExecuteDataTable(string.Format(@"
             SELECT *
-            FROM V_APS_NIDBEAccountPMax
+            FROM V_APS_NOIDBEAccountPMax
             "));
-            foreach (DataRow row in DtDetail.Rows)
+
+            try
             {
-                string PositionID = row["PositionID"].ToString();
-                dt.Columns.Add(PositionID);
-                ElementColumn[0].Add(new ElementTableOuput() { label = row["PositionName"] + "", prop = PositionID, width = "80", prop2 = PositionID, isEdit = false, ControlType = "textbox" });
+                foreach (DataRow row in DtDetail.Rows)
+                {
+                    string PositionID = row["PositionID"].ToString();
+                    dt.Columns.Add(PositionID);
+                    ElementColumn[0].Add(new ElementTableOuput() { label = row["PositionName"] + "", prop = PositionID, width = "80", prop2 = PositionID, isEdit = false, ControlType = "textbox" });
+                }
             }
+            catch
+            {
+
+            }
+
         }
         /// <summary>
         /// 人员工序技能矩阵报表
@@ -26922,7 +27399,7 @@ group by PackPlanDay,SalesPlanProcessMaterialID
             }
         }
         /// <summary>
-        /// 盈瑞丰SMT周计划
+        /// 盈瑞丰DIP周计划
         /// </summary>
         public void SetDt28634(ref DataTable dt)
         {
@@ -26931,123 +27408,47 @@ group by PackPlanDay,SalesPlanProcessMaterialID
             if (ElementColumn.Count == 0)
                 ElementColumn.Add(new List<ElementTableOuput>());
 
-            // 从 APS_ProcessPlanHistory 取 第一条 Status=1 的 FreezeStartDate、FreezeEndDate
-            DataTable dtFreeze = SqlHelper.ExecuteDataTable(@"
-            SELECT TOP 1 SaveDate
-        FROM APS_ProcessPlanHistory
-        WHERE Status = 1
-        ORDER BY SaveDate DESC
-    ");
-
             DateTime startDate = DateTime.Now;
             DateTime endDate = DateTime.Now;
 
-            if (dtFreeze.Rows.Count > 0)
+            // ===================== SaveDate 取值逻辑 =====================
+            // 优先从当前页面 dt 取 SaveDate：全部相同则直接用；有多种则 fallback 查数据库
+            if (dt.Columns.Contains("SaveDate") && dt.Rows.Count > 0)
             {
-                startDate = Convert.ToDateTime(dtFreeze.Rows[0]["SaveDate"]);
-                endDate = startDate.AddDays(10);
-            }
+                var distinctDates = dt.AsEnumerable()
+                    .Where(r => r["SaveDate"] != DBNull.Value && r["SaveDate"] != null)
+                    .Select(r => Convert.ToDateTime(r["SaveDate"]).Date)
+                    .Distinct()
+                    .ToList();
 
-            // ===================== 生成表头 =====================
-            DateTime FirstDate = startDate;
-            while (FirstDate <= endDate)
-            {
-                string label = string.Format("{0:MM月dd日}", FirstDate);
-                string prop = string.Format("{0:yyyy-MM-dd}", FirstDate);
-                if (!dt.Columns.Contains(prop))
-                    dt.Columns.Add(prop, typeof(decimal));
-                if (!ElementColumn[0].Any(m => m.prop == prop))
-                    ElementColumn[0].Add(new ElementTableOuput() { label = label, prop = prop, prop2 = prop, width = "80", isEdit = false, ControlType = "textbox", visible = true });
-
-                FirstDate = FirstDate.AddDays(1);
-            }
-
-            // ===================== 查询数据（按真实表头日期） =====================
-            DateTime minQueryDate = startDate;
-            DateTime maxQueryDate = endDate;
-
-            // 日计划（SMT）
-            DtDetail = SqlHelper.ExecuteDataTable(string.Format(@"
-SELECT A.ProcessPlanID,A.PlanDay,A.PlanQty,A.Years,A.Months,A.Weeks
-FROM   APS_DayPlan A INNER JOIN APS_ProcessPlan B ON A.ProcessPlanID = B.ProcessPlanID
-INNER JOIN Dev_Organize C ON B.LineID = C.OrganizeID
-WHERE 1=1
-AND C.OrganizeName LIKE '%SMT%'
-AND A.PlanDay >= '{0}'
-AND A.PlanDay <= '{1}'
-", minQueryDate.ToString("yyyy-MM-dd"), maxQueryDate.ToString("yyyy-MM-dd")));
-
-            // 报工（SMT）
-            DtDetail1 = SqlHelper.ExecuteDataTable(string.Format(@"
-SELECT A.ProcessPlanID,A.ProductionDate AS PlanDay,A.ReportQty AS PlanQty,A.Years,A.Months,A.Weeks
-FROM   V_APS_Report29 A INNER JOIN APS_ProcessPlan B ON A.ProcessPlanID = B.ProcessPlanID
-INNER JOIN Dev_Organize C ON B.LineID = C.OrganizeID
-WHERE 1=1
-AND C.OrganizeName LIKE '%SMT%'
-AND A.ProductionDate >= '{0}'
-AND A.ProductionDate <= '{1}'
-", minQueryDate.ToString("yyyy-MM-dd"), maxQueryDate.ToString("yyyy-MM-dd")));
-
-            dt.Columns.Add("BColors", typeof(Dictionary<string, string>));
-
-            // ===================== 赋值逻辑（保留不变） =====================
-            foreach (DataRow dataRow in dt.Rows)
-            {
-                string ProcessPlanID = dataRow["ProcessPlanID"].ToString();
-                string DataType = dataRow["DataType"].ToString();
-                Dictionary<string, string> bColors = new Dictionary<string, string>();
-
-                DateTime SecondDate = startDate;
-                while (SecondDate <= endDate)
+                if (distinctDates.Count == 1)
                 {
-                    string prop = string.Format("{0:yyyy-MM-dd}", SecondDate);
-                    decimal Qty = 0;
-
-                    if (DataType == "预计")
-                    {
-                        DataRow[] dataRows = DtDetail.Select("PlanDay = '" + prop + "' AND ProcessPlanID = '" + ProcessPlanID + "'");
-                        if (dataRows.Length > 0)
-                        {
-                            decimal.TryParse(dataRows[0]["PlanQty"].ToString(), out Qty);
-                        }
-                    }
-                    else if (DataType == "实际")
-                    {
-                        DataRow[] dataRows = DtDetail1.Select("PlanDay = '" + prop + "' AND ProcessPlanID = '" + ProcessPlanID + "'");
-                        if (dataRows.Length > 0)
-                        {
-                            decimal.TryParse(dataRows[0]["PlanQty"].ToString(), out Qty);
-                        }
-                    }
-                    if (Qty > 0) dataRow[prop] = Qty;
-                    SecondDate = SecondDate.AddDays(1);
+                    // 页面所有行 SaveDate 一致 → 直接用
+                    startDate = distinctDates[0];
+                    endDate = startDate.AddDays(10);
                 }
-                dataRow["BColors"] = bColors;
-            }
-        }
-        /// <summary>
-        /// 盈瑞丰DIP周计划
-        /// </summary>
-        public void SetDt28636(ref DataTable dt)
-        {
-            if (ElementColumn == null)
-                ElementColumn = new List<List<ElementTableOuput>>();
-            if (ElementColumn.Count == 0)
-                ElementColumn.Add(new List<ElementTableOuput>());
-
-            // 从 APS_ProcessPlanHistory 取 第一条 Status=1 的 FreezeStartDate、FreezeEndDate
-            DataTable dtFreeze = SqlHelper.ExecuteDataTable(@"
+                else
+                {
+                    // 多种 SaveDate 或为空 → 维持原逻辑查数据库
+                    DataTable dtFreeze = SqlHelper.ExecuteDataTable(@"
         SELECT TOP 1 SaveDate
         FROM APS_ProcessPlanHistory
         WHERE Status = 1
         ORDER BY SaveDate DESC
-    ");
-
-            DateTime startDate = DateTime.Now;
-            DateTime endDate = DateTime.Now;
-
-            if (dtFreeze.Rows.Count > 0)
+            ");
+                    startDate = Convert.ToDateTime(dtFreeze.Rows[0]["SaveDate"]);
+                    endDate = startDate.AddDays(10);
+                }
+            }
+            else
             {
+                // 无 SaveDate 列或无数据 → 维持原逻辑查数据库
+                DataTable dtFreeze = SqlHelper.ExecuteDataTable(@"
+        SELECT TOP 1 SaveDate
+        FROM APS_ProcessPlanHistory
+        WHERE Status = 1
+        ORDER BY SaveDate DESC
+            ");
                 startDate = Convert.ToDateTime(dtFreeze.Rows[0]["SaveDate"]);
                 endDate = startDate.AddDays(10);
             }
@@ -27064,53 +27465,36 @@ AND A.ProductionDate <= '{1}'
                 FirstDate = FirstDate.AddDays(1);
             }
 
-            // ===================== 查询数据（按真实表头日期查询） =====================
-            DateTime minQueryDate = startDate;
-            DateTime maxQueryDate = endDate;
-
             // 日计划
             DtDetail = SqlHelper.ExecuteDataTable(string.Format(@"
-SELECT A.ProcessPlanID,A.PlanDay,A.PlanQty 
-FROM   [APS_DayPlanHistory] A INNER JOIN APS_ProcessPlanHistory B ON A.ProcessPlanID = B.ProcessPlanID and a.savedate=b.savedate
-INNER JOIN Dev_Organize C ON B.LineID = C.OrganizeID
+SELECT A.*
+FROM   V_APS周次日计划 A 
 WHERE  1=1
-
-AND C.OrganizeName NOT LIKE '%SMT%'
 AND A.PlanDay >= '{0}'
 AND A.PlanDay <= '{1}'
-", minQueryDate.ToString("yyyy-MM-dd"), maxQueryDate.ToString("yyyy-MM-dd")));
+", startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd")));
 
             // 报工
             DtDetail1 = SqlHelper.ExecuteDataTable(string.Format(@"
-SELECT A.ProductionDate AS PlanDay,
-       A.ReportQty      AS PlanQty,
-       A.OrderID,
-       d.ProcessName,
-       b.ReportProcessName
-FROM   V_APS_Report29 A
-       INNER JOIN APS_ProcessPlan B
-               ON A.OrderID = B.OrderID
-                  AND A.Remark2 = B.ReportProcessName
-       INNER JOIN Dev_Organize C
-               ON B.LineID = C.OrganizeID
-       INNER JOIN APS_Process D
-               ON B.ProcessID = D.ProcessID
+SELECT A.*
+FROM   V_APS周次报工 A 
 WHERE  1 = 1
-       AND C.OrganizeName NOT LIKE '%SMT%'
-AND A.ProductionDate >= '{0}'
-AND A.ProductionDate <= '{1}'
-", minQueryDate.ToString("yyyy-MM-dd"), maxQueryDate.ToString("yyyy-MM-dd")));
+AND A.PlanDay >= '{0}'
+AND A.PlanDay <= '{1}'
+", startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd")));
 
             dt.Columns.Add("BColors", typeof(Dictionary<string, string>));
 
-            // ===================== 赋值逻辑（完全保留不动） =====================
+            // ===================== 赋值逻辑（修改取Qty为求和） =====================
             foreach (DataRow dataRow in dt.Rows)
             {
                 string ProcessPlanID = dataRow["ProcessPlanID"].ToString();
-                int OrderID = 0;
-                int.TryParse(dataRow["OrderID"].ToString(), out OrderID);
-                string ReportProcessName = dataRow["ReportProcessName"].ToString();
                 string DataType = dataRow["DataType"].ToString();
+                // ★ 取当前行的 SaveDate 作为过滤条件
+                string saveDate = dataRow["SaveDate"] != DBNull.Value && dataRow["SaveDate"] != null
+                    ? Convert.ToDateTime(dataRow["SaveDate"]).ToString("yyyy-MM-dd")
+                    : string.Empty;
+
                 Dictionary<string, string> bColors = new Dictionary<string, string>();
 
                 DateTime SecondDate = startDate;
@@ -27121,26 +27505,27 @@ AND A.ProductionDate <= '{1}'
 
                     if (DataType == "预计")
                     {
-                        DataRow[] dataRows = DtDetail.Select("PlanDay = '" + prop + "' AND ProcessPlanID = '" + ProcessPlanID + "'");
-                        if (dataRows.Length > 0)
-                        {
-                            decimal.TryParse(dataRows[0]["PlanQty"].ToString(), out Qty);
-                        }
+                        var sum = DtDetail.Compute("SUM(PlanQty)",
+                            "PlanDay = '" + prop + "' AND ProcessPlanID = '" + ProcessPlanID + "' AND SaveDate = '" + saveDate + "'");
+                        if (sum != DBNull.Value && sum != null)
+                            decimal.TryParse(sum.ToString(), out Qty);
                     }
                     else if (DataType == "实际")
                     {
-                        DataRow[] dataRows = DtDetail1.Select("PlanDay = '" + prop + "' AND OrderID = '" + OrderID + "' AND ReportProcessName = '" + ReportProcessName + "'");
-                        if (dataRows.Length > 0)
-                        {
-                            decimal.TryParse(dataRows[0]["PlanQty"].ToString(), out Qty);
-                        }
+                        var sum = DtDetail1.Compute("SUM(PlanQty)",
+                            "PlanDay = '" + prop + "' AND ProcessPlanID = '" + ProcessPlanID + "'");
+                        if (sum != DBNull.Value && sum != null)
+                            decimal.TryParse(sum.ToString(), out Qty);
                     }
+
                     if (Qty > 0) dataRow[prop] = Qty;
                     SecondDate = SecondDate.AddDays(1);
                 }
                 dataRow["BColors"] = bColors;
             }
         }
+
+
         DataTable dtjiandaoyun = null;
         /// <summary>
         /// 设置钢网颜色
@@ -27263,6 +27648,171 @@ WHERE  a.Status = 1
             }
         }
         #endregion
+
+
+
+        #region 大康
+        /// <summary>
+        /// 大康拆单逻辑
+        /// </summary>
+        public ApsLegacyJsonResult DKSplitOrderByERP()
+        {
+            bool result = true;
+            string msg = "";
+            string detailMsg = "";
+            ApsLegacyJsonResult ApsLegacyJsonResult = new ApsLegacyJsonResult();
+            try
+            {
+                JObject jObject = JsonConvert.DeserializeObject(BodyJson) as JObject;
+                if (jObject == null)
+                {
+                    msg = "未接收到数据，请确认是否为JSON格式";
+                    result = false;
+                }
+                else
+                {
+                    //校验工单数量以及返回 拆单接口JSON数据  --存储过程
+                    //校验是否状态是否异常
+                    string CheckResData = null;
+                    string SplitLog = null;
+                    string UserName = dev_Account.Name;
+                    string UserAccount = dev_Account.Account;
+
+                    SqlParameter[] checkReqParams = new SqlParameter[7];
+                    checkReqParams[0] = new SqlParameter("@jsonData", (object)jObject["data"]?.ToString() ?? DBNull.Value);//传数据
+                    checkReqParams[1] = new SqlParameter("@UserName", UserName);//用户名
+                    checkReqParams[2] = new SqlParameter("@UserAccount", UserAccount);//用户账号
+                    checkReqParams[3] = new SqlParameter("@Result", SqlDbType.Bit);//结果
+                    checkReqParams[4] = new SqlParameter("@Msg", SqlDbType.NVarChar, 500);//返回消息
+                    checkReqParams[5] = new SqlParameter("@ReponseData", SqlDbType.NVarChar, -1);//返回数据
+                    checkReqParams[6] = new SqlParameter("@SplitLog", SqlDbType.NVarChar, -1);//拆单记录数据
+                    checkReqParams[3].Direction = checkReqParams[4].Direction = checkReqParams[5].Direction = checkReqParams[6].Direction = ParameterDirection.Output;
+
+                    // 序列化成 JSON 字符串返回
+                    SqlHelper.ExecuteNonQuery(SqlHelper.MSSQLConnectionString, "P_DKSplitOrderBefore", checkReqParams);
+                    result = checkReqParams[3].Value.ToString().ToLower() == "true";
+                    detailMsg = checkReqParams[4].Value.ToString();
+                    if (!result)
+                    {
+                        msg = detailMsg;
+                        throw new InvalidOperationException(msg);
+                    }
+                    CheckResData = checkReqParams[5].Value.ToString();
+                    SplitLog = checkReqParams[6].Value.ToString();
+                    //post json到拆单接口  --接口
+                    // 1. 准备 URL
+                    string apiUrl = "http://192.168.50.44:9091/api/split";
+                    string spiltResBodyStr = null;
+                    Object ResObj = new
+                    {
+
+                    };
+                    // 2. 创建请求内容
+                    var content = new StringContent(CheckResData, Encoding.UTF8, "application/json");
+
+                    // 2. 初始化 HttpClient (建议在实际项目中使用 using 或 IHttpClientFactory 管理生命周期)
+                    using (var client = new HttpClient())
+                    {
+                        client.Timeout = TimeSpan.FromSeconds(9000);
+
+                        int maxRetries = 2; // 最多尝试2次
+                        int currentTry = 0;
+
+                        while (currentTry < maxRetries)
+                        {
+                            currentTry++;
+                            try
+                            {
+                                HttpResponseMessage response = client.PostAsync(apiUrl, content).GetAwaiter().GetResult();
+                                spiltResBodyStr = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+
+                                // 成功情况
+                                ResObj = new
+                                {
+                                    IsTimeout = false,
+                                    Request = new
+                                    {
+                                        Url = apiUrl,
+                                        Body = JsonConvert.DeserializeObject<JObject>(CheckResData)
+                                    },
+                                    Response = new
+                                    {
+                                        StatusCode = (int)response.StatusCode,
+                                        IsSuccess = response.IsSuccessStatusCode,
+                                        Body = JsonConvert.DeserializeObject(spiltResBodyStr)
+                                    },
+                                    ErrorMsg = string.Empty
+                                };
+
+                                bool isBusinessSuccess = JObject.Parse(spiltResBodyStr)?["success"]?.Value<bool>() == true;
+                                // 如果请求成功，跳出循环
+                                if (response.IsSuccessStatusCode && isBusinessSuccess)
+                                {
+                                    systemLog.SaveLog(SystemLog.SystemLogType.接口推送, "第" + currentTry + "次 ERP推送拆单_成功：状态码：" + response.StatusCode + "，是否成功状态码：" + response.IsSuccessStatusCode + "，返回参数：" + spiltResBodyStr, null, null);
+                                    break;
+                                }
+                                systemLog.SaveLog(SystemLog.SystemLogType.接口推送失败, "第" + currentTry + "次 ERP推送拆单_失败_状态码异常：状态码：" + response.StatusCode + "，是否成功状态码：" + response.IsSuccessStatusCode + "，返回参数：" + spiltResBodyStr, null, null);
+                            }
+                            catch (Exception ex)
+                            {
+                                systemLog.SaveLog(SystemLog.SystemLogType.接口推送失败, "第" + currentTry + "次 ERP推送拆单_失败_报错：异常信息：" + ex.Message, null, null);
+                                // 最后一次尝试失败
+                                if (currentTry == maxRetries)
+                                {
+                                    ResObj = new
+                                    {
+                                        IsTimeout = true,
+                                        Request = new
+                                        {
+                                            Url = apiUrl,
+                                            Body = JsonConvert.DeserializeObject<JObject>(CheckResData)
+                                        },
+                                        Response = new
+                                        {
+                                            StatusCode = 0,
+                                            IsSuccess = false,
+                                            Body = (string)null
+                                        },
+                                        ErrorMsg = $"请求超时: {ex.Message}"
+                                    };
+                                }
+                                // 如果不是最后一次，继续循环重试
+                            }
+                        }
+                    }
+
+                    SqlParameter[] splitParams = new SqlParameter[8];
+                    splitParams[0] = new SqlParameter("@jsonData", spiltResBodyStr);//传数据
+                    splitParams[1] = new SqlParameter("@UserName", UserName);//用户名
+                    splitParams[2] = new SqlParameter("@UserAccount", UserAccount);//用户账号
+                    splitParams[3] = new SqlParameter("@Result", SqlDbType.Bit);//结果
+                    splitParams[4] = new SqlParameter("@Msg", SqlDbType.NVarChar, 500);//返回消息
+                    splitParams[5] = new SqlParameter("@ReponseData", SqlDbType.NVarChar, -1);//返回数据
+                    splitParams[6] = new SqlParameter("@SplitLog", SplitLog);//传数据
+                    splitParams[7] = new SqlParameter("@SplitRes", JsonConvert.SerializeObject(ResObj));//传数据
+                    splitParams[3].Direction = splitParams[4].Direction = splitParams[5].Direction = ParameterDirection.Output;
+                    SqlHelper.ExecuteNonQuery(SqlHelper.MSSQLConnectionString, "P_DKSplitOrderAfter", splitParams);
+                    result = splitParams[3].Value.ToString().ToLower() == "true";
+                    msg = splitParams[4].Value.ToString();
+                    if (!result)
+                    {
+                        throw new InvalidOperationException(msg);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                systemLog.SaveLog(SystemLog.SystemLogType.接口推送失败, "拆单_失败：异常信息：" + ex.Message, null, null);
+                result = false;
+                msg = "拆单失败!" + ex.Message;
+            }
+            ApsLegacyJsonResult = base.FormResult(result, msg, null);
+            return ApsLegacyJsonResult;
+        }
+
+        #endregion
+
+
 
         /// <summary>
         /// pdf导出

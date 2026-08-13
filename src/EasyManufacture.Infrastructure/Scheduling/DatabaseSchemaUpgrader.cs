@@ -14,6 +14,7 @@ public static class DatabaseSchemaUpgrader
             UpgradeDevDictionary(logger);
             UpgradeDevOrganize(logger);
             UpgradeApsDayPlan(logger);
+            UpgradeDevSysLog(logger);
             logger.LogInformation("数据库结构自检完成");
         }
         catch (Exception ex)
@@ -109,5 +110,20 @@ exec [dbo].[P_UPDATE_Dev_Dictionary]");
         SqlHelper.ExecuteNonQuery(@"
 alter table APS_DayPlan add PLT int NULL
 exec [dbo].[P_UPDATE_Dev_Dictionary]");
+    }
+
+    /// <summary>Dev_SysLog.MenuName：保存请求头 Vuemenunameforlog（菜单地址）。</summary>
+    private static void UpgradeDevSysLog(ILogger logger)
+    {
+        if (ColumnExists("Dev_SysLog", "MenuName")) return;
+
+        logger.LogInformation("补丁 Dev_SysLog.MenuName");
+        SqlHelper.ExecuteNonQuery(@"
+ALTER TABLE dbo.Dev_SysLog ADD MenuName nvarchar(200) NULL;
+EXEC sys.sp_addextendedproperty
+  @name = N'MS_Description', @value = N'菜单地址（Vuemenunameforlog）',
+  @level0type = N'SCHEMA', @level0name = N'dbo',
+  @level1type = N'TABLE', @level1name = N'Dev_SysLog',
+  @level2type = N'COLUMN', @level2name = N'MenuName';");
     }
 }

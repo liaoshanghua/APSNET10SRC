@@ -14,27 +14,48 @@ internal static class ApsStartScriptWriter
             if not exist logs mkdir logs
 
             if exist "%~dp0Install-ApsDependencies.ps1" (
-              powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%~dp0Install-ApsDependencies.ps1" >> logs\deps-install.log 2>&1
-            )
-
-            if exist "%~dp0.dotnet-local-path" (
-              set /p _DOTNET_DIR=<"%~dp0.dotnet-local-path"
-              set DOTNET_ROOT=%_DOTNET_DIR%
-              set PATH=%_DOTNET_DIR%;%PATH%
+              powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%~dp0Install-ApsDependencies.ps1" >> logs\deps-console.log 2>&1
             )
 
             set ASPNETCORE_ENVIRONMENT=Production
+            set ASPNETCORE_URLS=http://0.0.0.0:{port}
             echo [%date% %time%] start-api.bat >> logs\startup.log
             if exist "%~dp0{entryExe}" (
-              "%~dp0{entryExe}" >> "%~dp0logs\aps-console.log" 2>&1
+              start "APS" /MIN "%~dp0{entryExe}"
             ) else (
-              dotnet "%~dp0{entryDll}" >> "%~dp0logs\aps-console.log" 2>&1
+              start "APS" /MIN dotnet "%~dp0{entryDll}"
             )
-            echo [%date% %time%] exited !ERRORLEVEL! >> "%~dp0logs\startup.log"
+            echo [%date% %time%] launched >> logs\startup.log
             """;
 
-        File.WriteAllText(batPath, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        // 无 BOM：cmd 对 UTF-8 BOM 的 @echo off 解析不稳定
+        File.WriteAllText(batPath, content.Replace("\r\n", "\n").Replace("\n", "\r\n"), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         WriteStartApiMinVbs(publishPath);
+        WriteStartApiLogonBat(publishPath, port, entryExe, entryDll);
+        return batPath;
+    }
+
+    /// <summary>用户登录后：结束旧 APS，在当前桌面会话重启（显示托盘）。</summary>
+    public static string WriteStartApiLogonBat(string publishPath, int port, string entryExe, string entryDll)
+    {
+        var batPath = Path.Combine(publishPath, "start-api-logon.bat");
+        var content = $"""
+            @echo off
+            cd /d "%~dp0"
+            if not exist logs mkdir logs
+            echo [%date% %time%] logon: restart for tray >> logs\startup.log
+            taskkill /F /IM {entryExe} >nul 2>&1
+            ping 127.0.0.1 -n 3 >nul
+            set ASPNETCORE_ENVIRONMENT=Production
+            set ASPNETCORE_URLS=http://0.0.0.0:{port}
+            if exist "%~dp0{entryExe}" (
+              start "APS" "%~dp0{entryExe}"
+            ) else (
+              start "APS" dotnet "%~dp0{entryDll}"
+            )
+            echo [%date% %time%] logon: launched >> logs\startup.log
+            """;
+        File.WriteAllText(batPath, content.Replace("\r\n", "\n").Replace("\n", "\r\n"), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         return batPath;
     }
 
@@ -51,8 +72,8 @@ internal static class ApsStartScriptWriter
             base = fso.GetParentFolderName(WScript.ScriptFullName)
             If Right(base, 1) <> Chr(92) Then base = base & Chr(92)
             sh.CurrentDirectory = base
-            ' 7=最小化窗口；False=不等待（计划任务立即返回）
-            sh.Run "cmd /c " & Chr(34) & base & "start-api.bat" & Chr(34), 7, False
+            ' 7=最小化窗口；True=等待 bat 结束（False 时计划任务会立刻结束并杀掉子进程，导致 APS 起不来）
+            sh.Run "cmd /c " & Chr(34) & base & "start-api.bat" & Chr(34), 7, True
             """;
 
         File.WriteAllText(vbsPath, content, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));

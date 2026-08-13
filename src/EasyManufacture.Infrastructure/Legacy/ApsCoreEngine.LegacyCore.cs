@@ -20,6 +20,7 @@ using System.Data;
 using Microsoft.Data.SqlClient;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
  
@@ -73,7 +74,7 @@ namespace EasyManufacture.Infrastructure.Legacy
         /// </summary>
          public static  Dictionary<string, CatchElemet> APSCatchElemet = new Dictionary<string, CatchElemet>();
         List<int> lstDayList = new List<int>() {5585,6734, 7946, 7945, 7955, 7954, 7957, 7956, 9016//, 9019//**********20240113为百威屏蔽
-                            , 9020, 9025,10115,8981 };
+                            , 9020, 9025,10115,8981,28673 };//28673是注塑专用
         /// <summary>
         /// 获取配置
         /// </summary>
@@ -7535,7 +7536,7 @@ where ProducedDate>=CAST(GETDATE() AS DATE)
                         string bColor = "#AECDEF";
                         if (workload > 0)
                         {
-                            if (workload >= 0.99m)
+                            if (workload >= 0.99m&& workload<=1)
                             {
                                 workload = 1;
                             }
@@ -14223,6 +14224,15 @@ WHERE YearMonth=FORMAT(GETDATE(),'yyyyMM') and  ProcessID='P202106171344021'
         {
             lstExportColumn.Clear();
             isDownload = true;
+            // APSData 内会改写 BodyJson，拆分参数提前取出
+            string exportSplitBy = null;
+            try
+            {
+                var joSplit = JsonConvert.DeserializeObject(BodyJson) as JObject;
+                if (joSplit != null && joSplit["ExportSplitBy"] != null)
+                    exportSplitBy = joSplit["ExportSplitBy"].ToString()?.Trim();
+            }
+            catch { /* ignore */ }
             ApplyApsDataExportHooks();
             string s = APSData();
 
@@ -14281,21 +14291,180 @@ WHERE YearMonth=FORMAT(GETDATE(),'yyyyMM') and  ProcessID='P202106171344021'
 
             }
             MergeExportColumnsFromElementColumn(dtData);
-            ExportExcel(dtData);
+            if (string.IsNullOrEmpty(exportSplitBy) && jObject != null && jObject["ExportSplitBy"] != null)
+                exportSplitBy = jObject["ExportSplitBy"].ToString()?.Trim();
+            ExportExcel(dtData, exportSplitBy);
             return View("Index");
         }
         /// <summary>
-        /// 导出
+        /// 导出。请求体带 ExportSplitBy=列名 时，按该列拆成多个 xlsx 并打成 zip 下载。
         /// </summary>
         /// <param name="dt"></param>
         public void ExportExcel(DataTable dt)
+        {
+            string splitBy = null;
+            if (jObject != null && jObject["ExportSplitBy"] != null)
+                splitBy = jObject["ExportSplitBy"].ToString()?.Trim();
+            ExportExcel(dt, splitBy);
+        }
+
+        /// <summary>
+        /// 导出；exportSplitBy 有值时按列拆分打 zip。
+        /// </summary>
+        public void ExportExcel(DataTable dt, string exportSplitBy)
+        {
+            if (!string.IsNullOrWhiteSpace(exportSplitBy) && dt != null)
+            {
+                string col = ResolveExportSplitColumn(dt, exportSplitBy.Trim());
+                if (string.IsNullOrEmpty(col))
+                {
+                    var cols = string.Join(",", dt.Columns.Cast<DataColumn>().Select(c => c.ColumnName).Take(80));
+                    throw new Exception("ExportSplitBy 列不存在：" + exportSplitBy + "；当前结果列：" + cols);
+                }
+                ExportExcelSplitToZip(dt, col);
+                return;
+            }
+            OutputClient(BuildExportExcelBytes(dt));
+        }
+
+        /// <summary>
+        /// 解析拆分列：精确 / 忽略大小写 / XxxText。
+        /// </summary>
+        private static string ResolveExportSplitColumn(DataTable dt, string splitBy)
+        {
+            if (dt == null || string.IsNullOrWhiteSpace(splitBy))
+                return null;
+            splitBy = splitBy.Trim().Trim('\uFEFF');
+            if (dt.Columns.Contains(splitBy))
+                return dt.Columns[splitBy].ColumnName;
+            foreach (DataColumn c in dt.Columns)
+            {
+                if (string.Equals(c.ColumnName, splitBy, StringComparison.OrdinalIgnoreCase))
+                    return c.ColumnName;
+            }
+            string withText = splitBy.EndsWith("Text", StringComparison.OrdinalIgnoreCase)
+                ? splitBy
+                : splitBy + "Text";
+            foreach (DataColumn c in dt.Columns)
+            {
+                if (string.Equals(c.ColumnName, withText, StringComparison.OrdinalIgnoreCase))
+                    return c.ColumnName;
+            }
+            if (splitBy.EndsWith("Text", StringComparison.OrdinalIgnoreCase))
+            {
+                string baseName = splitBy.Substring(0, splitBy.Length - 4);
+                foreach (DataColumn c in dt.Columns)
+                {
+                    if (string.Equals(c.ColumnName, baseName, StringComparison.OrdinalIgnoreCase))
+                        return c.ColumnName;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 按 ExportSplitBy 列分组，每组一个 xlsx，打包为 zip 输出。
+        /// </summary>
+        private void ExportExcelSplitToZip(DataTable dt, string splitBy)
+        {
+            var groups = new Dictionary<string, DataTable>(StringComparer.Ordinal);
+            foreach (DataRow row in dt.Rows)
+            {
+                string key = row[splitBy] == DBNull.Value || row[splitBy] == null
+                    ? ""
+                    : (row[splitBy].ToString()?.Trim() ?? "");
+                if (string.IsNullOrEmpty(key))
+                    key = "空";
+                if (!groups.TryGetValue(key, out var part))
+                {
+                    part = dt.Clone();
+                    // TableName 用作 Sheet 名：Excel 限制 31 字符
+                    part.TableName = SanitizeExportSheetName(key);
+                    groups[key] = part;
+                }
+                part.ImportRow(row);
+            }
+
+            if (groups.Count == 0)
+            {
+                OutputClient(BuildExportExcelBytes(dt));
+                return;
+            }
+
+            var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using var zipMs = new MemoryStream();
+            using (var archive = new ZipArchive(zipMs, ZipArchiveMode.Create, leaveOpen: true))
+            {
+                // 总记录：全部数据一份
+                {
+                    var allDt = dt.Copy();
+                    allDt.TableName = SanitizeExportSheetName("总记录");
+                    byte[] allBytes = BuildExportExcelBytes(allDt);
+                    string allEntry = "总记录.xlsx";
+                    usedNames.Add(allEntry);
+                    var allEntryZip = archive.CreateEntry(allEntry, System.IO.Compression.CompressionLevel.Optimal);
+                    using var allEs = allEntryZip.Open();
+                    allEs.Write(allBytes, 0, allBytes.Length);
+                }
+
+                int seq = 0;
+                foreach (var kv in groups)
+                {
+                    seq++;
+                    byte[] xlsx = BuildExportExcelBytes(kv.Value);
+                    string baseName = SanitizeExportFileName(kv.Key);
+                    string entryName = baseName + ".xlsx";
+                    if (!usedNames.Add(entryName))
+                    {
+                        entryName = baseName + "_" + seq + ".xlsx";
+                        usedNames.Add(entryName);
+                    }
+                    var entry = archive.CreateEntry(entryName, System.IO.Compression.CompressionLevel.Optimal);
+                    using var es = entry.Open();
+                    es.Write(xlsx, 0, xlsx.Length);
+                }
+            }
+            OutputClient(
+                zipMs.ToArray(),
+                DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss") + ".zip",
+                "application/zip");
+        }
+
+        private static string SanitizeExportFileName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return "空";
+            foreach (var c in Path.GetInvalidFileNameChars())
+                name = name.Replace(c, '_');
+            name = name.Trim().Trim('.');
+            if (name.Length > 80)
+                name = name.Substring(0, 80);
+            return string.IsNullOrEmpty(name) ? "空" : name;
+        }
+
+        /// <summary>Excel 工作表名：去掉非法字符，最长 31。</summary>
+        private static string SanitizeExportSheetName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                name = "Sheet1";
+            foreach (var c in new[] { ':', '\\', '/', '?', '*', '[', ']' })
+                name = name.Replace(c, '_');
+            name = name.Trim().Trim('\'');
+            if (name.Length > 31)
+                name = name.Substring(0, 31);
+            return string.IsNullOrEmpty(name) ? "Sheet1" : name;
+        }
+
+        private byte[] BuildExportExcelBytes(DataTable dt)
         {
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
             //新建一个 Excel 工作簿
             ExcelPackage package = new ExcelPackage();
 
-            // 添加一个 sheet 表
-            ExcelWorksheet worksheet = package.Workbook.Worksheets.Add(dt.TableName);
+            // 添加一个 sheet 表（表名须符合 Excel 限制）
+            string sheetName = SanitizeExportSheetName(
+                string.IsNullOrWhiteSpace(dt?.TableName) ? "Sheet1" : dt.TableName);
+            ExcelWorksheet worksheet = package.Workbook.Worksheets.Add(sheetName);
 
             int rowIndex = 1;   // 起始行为 1
             int colIndex = 1;   // 起始列为 1
@@ -14546,11 +14715,9 @@ WHERE YearMonth=FORMAT(GETDATE(),'yyyyMM') and  ProcessID='P202106171344021'
             //也可以直接获取字节数组
             byte[] bytes = package.GetAsByteArray();
 
-            //调用下面的方法输出到浏览器下载
-            OutputClient(bytes);
-
             worksheet.Dispose();
             package.Dispose();
+            return bytes;
         }
         public void ExportExcelOLD(DataTable dt)
         {
@@ -14656,6 +14823,14 @@ WHERE YearMonth=FORMAT(GETDATE(),'yyyyMM') and  ProcessID='P202106171344021'
         }
         public void OutputClient(byte[] bytes)
         {
+            OutputClient(
+                bytes,
+                DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss") + ".xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        }
+
+        public void OutputClient(byte[] bytes, string fileName, string contentType)
+        {
             var response = HttpContext.Response;
 
             response.Buffer = true;
@@ -14664,8 +14839,8 @@ WHERE YearMonth=FORMAT(GETDATE(),'yyyyMM') and  ProcessID='P202106171344021'
             response.ClearHeaders();
             response.ClearContent();
 
-            response.ContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-            response.AddHeader("Content-Disposition", string.Format("attachment; filename={0}.xlsx", DateTime.Now.ToString("yyyy-MM-dd-HH-mm-ss")));
+            response.ContentType = contentType;
+            response.AddHeader("Content-Disposition", string.Format("attachment; filename={0}", fileName));
 
             response.Charset = "utf-8";
             response.ContentEncoding = Encoding.GetEncoding("utf-8");
@@ -23137,10 +23312,10 @@ WHERE   A.ProcessPlanID IN (" + processPlanIDs + @") AND ISNULL(A.HasQty1,0)=0
                         try
                         {
 
-                            //  dev_DictionariesAll = Entities.Dev_DictionaryField.ToList();
+                            //  dev_DictionariesAll = Entities.Dev_DictionaryField.AsNoTracking().ToList();
 
-                            Dev_DictionaryAll = Entities.Dev_Dictionary.ToList();
-                            lstOrgs = Entities.Dev_Organize.ToList();
+                            Dev_DictionaryAll = Entities.Dev_Dictionary.AsNoTracking().ToList();
+                            lstOrgs = Entities.Dev_Organize.AsNoTracking().ToList();
                             isAllOK = true;
                             string processPlanIDs = "0";
                             //第一步，循环所有的对象，这里可包含多个表
@@ -23222,17 +23397,17 @@ WHERE   A.ProcessPlanID IN (" + processPlanIDs + @") AND ISNULL(A.HasQty1,0)=0
                                                         // entry.State = EntityState.Added;
                                                         stringBuilder.Append(string.Format(@"
                                         INSERT INTO APS_DayPlan(ProcessPlanID,CreatedOn,CreatedBy,CreatedByName,Status
-                                                ,OrderID,MaterialID,LineID,WorkShopID,HasQty,ExpectTime,PlanQty,PlanDay,WorkingTimesID
+                                                ,OrderID,MaterialID,WorkShopID,HasQty,ExpectTime,PlanQty,PlanDay,WorkingTimesID,LineID
                                             )
                                        SELECT TOP 1
-                                                {0},GETDATE(),'{1}','{2}',1,{3},{4},{5},{7},{8},{9},{10},'{11}','{12}'
+                                                {0},GETDATE(),'{1}','{2}',1,{3},{4},{7},{8},{9},{10},'{11}','{12}',a.LineID
                                              FROM [APS_ProcessPlan] A
                                                LEFT JOIN APS_DayPlan B ON A.ProcessPlanID=B.ProcessPlanID 
 AND B.PlanDay='{11}' AND ISNULL(B.WorkingTimesID,'')='{12}'
 WHERE B.ProcessPlanID IS NULL and a.ProcessPlanID={0}
   UPDATE   b
                                         SET ModifyedOn=GETDATE(),ModifiedBy='{1}',ModifiedByName='{2}',WorkShopID={7}
-                                        ,LineID={5},PlanQty={10}
+                                        ,LineID=a.lineid,PlanQty={10}
   FROM [APS_ProcessPlan] A
                                                INNER JOIN APS_DayPlan B ON A.ProcessPlanID=B.ProcessPlanID 
 AND B.PlanDay='{11}' AND ISNULL(B.WorkingTimesID,'')='{12}' and a.ProcessPlanID={0}
@@ -23268,10 +23443,6 @@ AND B.PlanDay='{11}' AND ISNULL(B.WorkingTimesID,'')='{12}' and a.ProcessPlanID=
                                                 }
                                             }
 
-                                        }
-                                        else if(DateTime.Now.AddDays(i).Date.Day>DateTime.Now.Date.Day)
-                                        {
-                                            break;
                                         }
                                     }
 
@@ -27984,12 +28155,16 @@ where RoleID='{0}'
                                             switch (w)
                                             {
                                                 case "=":
-                                                    {//等于
-                                                        if (dtData.Columns[colorField].DataType == typeof(decimal) || dtData.Columns[colorField].DataType == typeof(decimal?) || dtData.Columns[colorField].DataType == typeof(double?) || dtData.Columns[colorField].DataType == typeof(Single?))
+                                                    {//等于：空/NULL 不参与数值比较（避免 TryParse 失败后 d=0 误命中 =0）
+                                                        if (rowData[colorField] == DBNull.Value || string.IsNullOrEmpty(rowData[colorField].ToString()))
                                                         {
-                                                            decimal d = 0;
-                                                            decimal.TryParse(rowData[colorField].ToString(), out d);
-                                                            flag = d == decimal.Parse(ReducedValue);
+                                                            flag = false;
+                                                        }
+                                                        else if (dtData.Columns[colorField].DataType == typeof(decimal) || dtData.Columns[colorField].DataType == typeof(decimal?) || dtData.Columns[colorField].DataType == typeof(double?) || dtData.Columns[colorField].DataType == typeof(Single?))
+                                                        {
+                                                            decimal d;
+                                                            flag = decimal.TryParse(rowData[colorField].ToString(), out d)
+                                                                && d == decimal.Parse(ReducedValue);
                                                         }
                                                         else
                                                         {
@@ -28008,13 +28183,17 @@ where RoleID='{0}'
                                                         flag = rowData[colorField].ToString().EndsWith(ReducedValue);
                                                         break;
                                                     }
-                                                case "!"://不等于
+                                                case "!"://不等于：空/NULL 视为不等于具体值
                                                     {
-                                                        if (dtData.Columns[colorField].DataType == typeof(decimal) || dtData.Columns[colorField].DataType == typeof(decimal?) || dtData.Columns[colorField].DataType == typeof(double?) || dtData.Columns[colorField].DataType == typeof(Single?))
+                                                        if (rowData[colorField] == DBNull.Value || string.IsNullOrEmpty(rowData[colorField].ToString()))
                                                         {
-                                                            decimal d = 0;
-                                                            decimal.TryParse(rowData[colorField].ToString(), out d);
-                                                            flag = d != decimal.Parse(ReducedValue);
+                                                            flag = true;
+                                                        }
+                                                        else if (dtData.Columns[colorField].DataType == typeof(decimal) || dtData.Columns[colorField].DataType == typeof(decimal?) || dtData.Columns[colorField].DataType == typeof(double?) || dtData.Columns[colorField].DataType == typeof(Single?))
+                                                        {
+                                                            decimal d;
+                                                            flag = !decimal.TryParse(rowData[colorField].ToString(), out d)
+                                                                || d != decimal.Parse(ReducedValue);
                                                         }
                                                         else
                                                         {
@@ -28027,18 +28206,32 @@ where RoleID='{0}'
                                                         flag = rowData[colorField].ToString().Contains(ReducedValue) == true;
                                                         break;
                                                     }
-                                                case ">"://大于
+                                                case ">"://大于：空/NULL 不比较
                                                     {
-                                                        decimal d = 0;
-                                                        decimal.TryParse(rowData[colorField].ToString(), out d);
-                                                        flag = d > decimal.Parse(ReducedValue);
+                                                        if (rowData[colorField] == DBNull.Value || string.IsNullOrEmpty(rowData[colorField].ToString()))
+                                                        {
+                                                            flag = false;
+                                                        }
+                                                        else
+                                                        {
+                                                            decimal d;
+                                                            flag = decimal.TryParse(rowData[colorField].ToString(), out d)
+                                                                && d > decimal.Parse(ReducedValue);
+                                                        }
                                                         break;
                                                     }
-                                                case "<"://小于
+                                                case "<"://小于：空/NULL 不比较
                                                     {
-                                                        decimal d = 0;
-                                                        decimal.TryParse(rowData[colorField].ToString(), out d);
-                                                        flag = d < decimal.Parse(ReducedValue);
+                                                        if (rowData[colorField] == DBNull.Value || string.IsNullOrEmpty(rowData[colorField].ToString()))
+                                                        {
+                                                            flag = false;
+                                                        }
+                                                        else
+                                                        {
+                                                            decimal d;
+                                                            flag = decimal.TryParse(rowData[colorField].ToString(), out d)
+                                                                && d < decimal.Parse(ReducedValue);
+                                                        }
                                                         break;
                                                     }
                                                 case "S"://SQL条件

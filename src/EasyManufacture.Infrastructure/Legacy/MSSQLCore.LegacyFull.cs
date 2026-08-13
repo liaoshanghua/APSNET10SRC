@@ -489,6 +489,8 @@ where A.DictionaryID=" + dictionaryID + " AND A.IsSelect=1 ORDER BY A.FieldIndex
             {
                 orderBy = OrderBy;
             }
+            // 多值查询保序表达式（最终 ORDER BY：输入顺序 → 原有 SortType/前端 sort）
+            var searchOrderExprs = new List<string>();
             string keyField = "";
             //组织条件
             string organizeIDCondition = "";
@@ -603,7 +605,6 @@ where A.DictionaryID=" + dictionaryID + " AND A.IsSelect=1 ORDER BY A.FieldIndex
 
                 if ((NameValueCollection != null && NameValueCollection[Prefix + searchParameterName] != null) || (JsToken != null && JsToken[parameterName] != null) || ListSystemField.Contains(parameterName) || CustomerNameValue.ContainsKey(parameterName) || (operationType == OperationType.Insert)||!string.IsNullOrEmpty(LicenceRuntime.Http.HttpContext.Request.GetRequestValue(Prefix + searchParameterName))|| jArrayQueryParams!=null)
                 {
-                    bool isUsCharIndex = true;
                     bool isArray = false;
                     string value = LicenceRuntime.Http.HttpContext.Request.GetRequestValue(Prefix + searchParameterName);
                     if (NameValueCollection != null&& string.IsNullOrEmpty(value))
@@ -616,7 +617,6 @@ where A.DictionaryID=" + dictionaryID + " AND A.IsSelect=1 ORDER BY A.FieldIndex
                         var token = JsToken[parameterName];
                         if (token is JArray arr)
                         {
-                            isUsCharIndex = false;
                             isArray = arr.Count > 0;
                             value = string.Join(",", arr
                                 .Where(t => t != null && t.Type != JTokenType.Null)
@@ -631,7 +631,6 @@ where A.DictionaryID=" + dictionaryID + " AND A.IsSelect=1 ORDER BY A.FieldIndex
                                 {
                                     if (JToken.Parse(value) is JArray parsed && parsed.Count > 0)
                                     {
-                                        isUsCharIndex = false;
                                         isArray = true;
                                         value = string.Join(",", parsed.Select(t => t.ToString()));
                                     }
@@ -644,7 +643,6 @@ where A.DictionaryID=" + dictionaryID + " AND A.IsSelect=1 ORDER BY A.FieldIndex
                         }
                         else
                         {
-                            isUsCharIndex = false;
                             value = string.Empty;
                             foreach (var obj in token)
                             {
@@ -788,27 +786,33 @@ where A.DictionaryID=" + dictionaryID + " AND A.IsSelect=1 ORDER BY A.FieldIndex
                                         queryMethod = QueryMethod.精确匹配;
                                     }
                                 }
-                                var matchCollection = value.Split(',');
-                                if (dr["DataType"].ToString().ToLower() != "datetime" && dr["DataType"].ToString().ToLower() != "date")
+                                // 支持逗号 / 中文逗号 / 换行 / Tab 多值粘贴，并按粘贴顺序保序
+                                string[] matchCollection;
+                                if (dr["DataType"].ToString().ToLower() == "datetime" || dr["DataType"].ToString().ToLower() == "date")
                                 {
-                                   
-                                    if (AppInfo.IsUseSplit == false && JsToken == null)
-                                    {
-                                        matchCollection = new string[0]; ;
-                                    }
-                                    if (value.IndexOf('，') > 0)
-                                    {
-                                        matchCollection = value.Split('，');
-                                    }
-
-                                    if (AppInfo.IsUseSplit && matchCollection.Length > 1)
+                                    matchCollection = value.Split(',');
+                                }
+                                else
+                                {
+                                    string splitSrc = value
+                                        .Replace('，', ',')
+                                        .Replace("\r\n", ",")
+                                        .Replace('\r', ',')
+                                        .Replace('\n', ',')
+                                        .Replace('\t', ',');
+                                    matchCollection = splitSrc.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                                    if (matchCollection.Length > 1)
                                     {
                                         isArray = true;
                                     }
                                 }
                                 string valueIn = "";
                                 string whereLike = "(";
-                                string orderByIn = "";
+                                // 多值保序：用 VALUES(序号,值) 替代 CHARINDEX（避免前缀误匹配，且 int 也可用）
+                                string orderByValues = "";
+                                int orderSeq = 0;
+                                bool isNumericKey = dr["DataType"].ToString().ToLower() == "bigint"
+                                    || dr["DataType"].ToString().ToLower() == "int";
                                 if (isArray)
                                 {
                                     foreach (string v in matchCollection)
@@ -816,7 +820,8 @@ where A.DictionaryID=" + dictionaryID + " AND A.IsSelect=1 ORDER BY A.FieldIndex
                                         string  v1 = v.Trim().Replace("'","''");
                                         if (!string.IsNullOrEmpty(v1))
                                         {
-                                            if (dr["DataType"].ToString().ToLower() == "bigint" || dr["DataType"].ToString().ToLower() == "int")
+                                            orderSeq++;
+                                            if (isNumericKey)
                                             {
                                               //  if(queryMethod!= QueryMethod.模糊匹配)
                                                 {
@@ -824,10 +829,12 @@ where A.DictionaryID=" + dictionaryID + " AND A.IsSelect=1 ORDER BY A.FieldIndex
                                                 }
                                          
                                                 valueIn += "" + v1.Replace("'", "") + ",";
+                                                orderByValues += "(" + orderSeq + "," + v1.Replace("'", "") + "),";
                                             }
                                             else
                                             {
                                                 valueIn += "'" + v1.Replace("'", "") + "',";
+                                                orderByValues += "(" + orderSeq + ",N'" + v1 + "'),";
                                                 if(v.EndsWith("*"))
                                                 {
                                                     v1 = " LIKE '" + v.TrimEnd('*') + "%'";
@@ -858,8 +865,6 @@ where A.DictionaryID=" + dictionaryID + " AND A.IsSelect=1 ORDER BY A.FieldIndex
                                                     whereLike += parameterName + v1;
                                                 }
                                             }
-
-                                            orderByIn += v.Trim().Replace("'", "") + ",";
                                         }
                                         else
                                         {
@@ -869,7 +874,7 @@ where A.DictionaryID=" + dictionaryID + " AND A.IsSelect=1 ORDER BY A.FieldIndex
                                     }
                                     whereLike += ")";
                                 }
-                                if (AppInfo.IsUseSplit&& matchCollection.Length > 1&&!string.IsNullOrEmpty(valueIn)&&queryMethod!= QueryMethod.NOTIN&&queryMethod!= QueryMethod.范围)
+                                if (matchCollection.Length > 1&&!string.IsNullOrEmpty(valueIn)&&queryMethod!= QueryMethod.NOTIN&&queryMethod!= QueryMethod.范围)
                                 {
                                     if(queryMethod== QueryMethod.模糊匹配|| queryMethod == QueryMethod.多个值与)
                                     {
@@ -887,18 +892,15 @@ where A.DictionaryID=" + dictionaryID + " AND A.IsSelect=1 ORDER BY A.FieldIndex
                                     {
                                         ResultWhere += " AND  " + parameterName + " IN (" + valueIn.Trim(',') + ")";
                                     }
-                          
-                                    if((dr["DataType"].ToString().ToLower() != "bigint" && dr["DataType"].ToString().ToLower() != "int")&& isUsCharIndex==true)
-                                    {
-                                        if (orderBy.Trim(',') == "")
-                                        {
-                                            orderBy +=   @"CHARINDEX(CAST(" + parameterName + " AS VARCHAR(8000)),'" + orderByIn + "' )";
-                                        }
-                                        else
-                                        {
-                                            orderBy = orderBy.Trim(',') + @" ,CHARINDEX(CAST(" + parameterName + " AS VARCHAR(8000)),'" + orderByIn + "' )";
-                                        }
 
+                                    // 先记下输入顺序；最终与字典 SortType / 前端 sort 拼接时再放到最前
+                                    if (!string.IsNullOrEmpty(orderByValues))
+                                    {
+                                        string orderExpr = "ISNULL((SELECT TOP 1 Seq FROM (VALUES "
+                                            + orderByValues.TrimEnd(',')
+                                            + ") AS _apsOrd(Seq,Val) WHERE _apsOrd.Val=" + parameterName
+                                            + "),2147483647)";
+                                        searchOrderExprs.Add(orderExpr);
                                     }
                                  
                                
@@ -1219,7 +1221,17 @@ where A.DictionaryID=" + dictionaryID + " AND A.IsSelect=1 ORDER BY A.FieldIndex
             }
             if (!string.IsNullOrEmpty(sort))
             {
-                if (orderBy.ToLower().IndexOf(sort.Split(' ')[0].ToLower()) == -1)
+                // 有多值输入保序时：前端列排序只能接在后面，不能整段覆盖
+                bool hasSearchOrder = searchOrderExprs.Count > 0;
+                string sortField = sort.Split(' ')[0];
+                if (hasSearchOrder)
+                {
+                    if (orderBy.IndexOf(sortField, StringComparison.OrdinalIgnoreCase) < 0)
+                    {
+                        orderBy = orderBy.Trim(',') + "," + sort + " " + (order ?? "");
+                    }
+                }
+                else if (orderBy.ToLower().IndexOf(sortField.ToLower()) == -1)
                 {
                     orderBy = sort + " " + order + (string.IsNullOrEmpty(orderBy) || orderBy == sort ? "" : "," + orderBy);
                 }
@@ -1239,6 +1251,12 @@ where A.DictionaryID=" + dictionaryID + " AND A.IsSelect=1 ORDER BY A.FieldIndex
             //    orderBy = orderBy.Trim(',')+ "," +keyField;
             //}
             orderBy = orderBy.Trim(',');
+            // 最终顺序：输入顺序 → 原有排序（字典 SortType / 前端 sort / 主键）
+            if (searchOrderExprs.Count > 0)
+            {
+                string searchOrd = string.Join(",", searchOrderExprs);
+                orderBy = string.IsNullOrEmpty(orderBy) ? searchOrd : (searchOrd + "," + orderBy);
+            }
             int start = (pageIndex - 1) * pageSize;
             int end = start + pageSize - 1;
             if (operationType == OperationType.Select)

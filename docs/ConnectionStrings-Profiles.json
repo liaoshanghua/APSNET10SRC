@@ -141,9 +141,9 @@
       "scm": ""
     },
     {
-      "name": "金星辉外网",
+      "name": "金星徽外网",
       "enabled": false,
-      "mssql": "Data Source=wx.honorsta.com,31433;Initial Catalog=APS;user=saa;password=Jxh123456;Connect Timeout=600",
+      "mssql": "Data Source=wx.honorsta.com,21433;Initial Catalog=APS;user=saa;password=Jxh123456;Connect Timeout=600",
       "scm": ""
     },
     {
@@ -484,9 +484,15 @@
       "scm": ""
     },
     {
-      "name": "未命名_81",
+      "name": "大叶",
       "enabled": false,
-      "mssql": "Data Source=172.16.1.21\\MSSQLSERVER2019,1433;Initial Catalog=APS;user=sa;password=daye2026@@",
+      "mssql": "Data Source=172.16.1.21\\MSSQLSERVER2019,1433;Initial Catalog=APS;user=sa;password=daye2026@@;TrustServerCertificate=True;MultipleActiveResultSets=True",
+      "scm": ""
+    },
+    {
+      "name": "富来",
+      "enabled": false,
+      "mssql": "Data Source=192.168.1.72\\MSSQLSERVER2019,1433;Initial Catalog=APS;user=sa;password=fulaiaps;TrustServerCertificate=True;MultipleActiveResultSets=True",
       "scm": ""
     }
   ]

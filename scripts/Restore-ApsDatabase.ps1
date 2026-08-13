@@ -4,6 +4,8 @@
   还原成功后 TRUNCATE 指定前缀的 APS 业务表（dbo 下 name LIKE 前缀+'%'）。
 
 .DESCRIPTION
+  须配置 appsettings.json → DatabaseMaintenance:Password，并在执行时提供 -MaintenancePassword 或交互输入。
+
   默认匹配表名前缀：
     APS_Order*, APS_Material*, APS_PO*,
     APS_ProcessMaterial*, APS_ProcessPlan*, APS_SalesOrder*
@@ -11,16 +13,10 @@
   还原前会将目标库设为 SINGLE_USER（ROLLBACK IMMEDIATE），请确保已停止 APS 服务。
 
 .EXAMPLE
-  # 从 appsettings 读连接串，还原并清空核心表
-  .\Restore-ApsDatabase.ps1 -BackupPath "D:\Backup\APS20260301.bak" -Confirm
+  .\Restore-ApsDatabase.ps1 -BackupPath "D:\Backup\APS20260301.bak" -MaintenancePassword "your-secret" -Confirm
 
 .EXAMPLE
-  # 仅清空核心表（不还原）
-  .\Restore-ApsDatabase.ps1 -SkipRestore -Confirm
-
-.EXAMPLE
-  # 指定服务器与库名
-  .\Restore-ApsDatabase.ps1 -BackupPath "D:\Backup\APS.bak" -Server "192.168.1.88" -Database "APS20260602" -SqlUser sa -SqlPassword "***" -Confirm
+  .\Restore-ApsDatabase.ps1 -SkipRestore -MaintenancePassword "your-secret" -Confirm
 #>
 param(
     [string] $BackupPath,
@@ -38,6 +34,8 @@ param(
     [string] $AppSettingsPath = '',
 
     [string] $TruncateProcScript = '',
+
+    [string] $MaintenancePassword = '',
 
     [switch] $SkipRestore,
 
@@ -148,6 +146,78 @@ function Get-ConnectionFromAppSettings {
     return $json.ConnectionStrings.MSSQLConnectionString
 }
 
+function Get-MaintenancePasswordFromAppSettings {
+    param([string] $Path)
+    if (-not (Test-Path -LiteralPath $Path)) { return '' }
+    $json = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($null -eq $json.DatabaseMaintenance) { return '' }
+    return [string]$json.DatabaseMaintenance.Password
+}
+
+function Assert-MaintenancePassword {
+    param(
+        [string] $ConfiguredPassword,
+        [string] $ProvidedPassword,
+        [switch] $AllowPrompt
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ConfiguredPassword)) {
+        throw '未配置 DatabaseMaintenance:Password。请在 appsettings.json 中设置维护密码后重试。'
+    }
+
+    $inputPassword = $ProvidedPassword
+    if ([string]::IsNullOrWhiteSpace($inputPassword)) {
+        if (-not $AllowPrompt) {
+            throw '请提供 -MaintenancePassword，或在交互模式下输入维护密码。'
+        }
+        $secure = Read-Host '请输入数据库维护密码' -AsSecureString
+        $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
+        try {
+            $inputPassword = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
+        }
+        finally {
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
+        }
+    }
+
+    if ($inputPassword -cne $ConfiguredPassword) {
+        throw '维护密码错误，已取消操作。'
+    }
+
+    return $inputPassword
+}
+
+function Sync-MaintenancePasswordHash {
+    param(
+        [string] $SqlCmd,
+        [hashtable] $AuthArgs,
+        [string] $DatabaseName,
+        [string] $MaintenancePassword
+    )
+
+    $escaped = $MaintenancePassword.Replace("'", "''")
+    $sql = @"
+IF OBJECT_ID(N'dbo.APS_DatabaseMaintenance', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.APS_DatabaseMaintenance (
+        Id int NOT NULL CONSTRAINT PK_APS_DatabaseMaintenance PRIMARY KEY,
+        PasswordHash varbinary(32) NOT NULL
+    );
+    INSERT dbo.APS_DatabaseMaintenance (Id, PasswordHash) VALUES (1, 0x0);
+END
+
+IF EXISTS (SELECT 1 FROM dbo.APS_DatabaseMaintenance WHERE Id = 1)
+    UPDATE dbo.APS_DatabaseMaintenance
+    SET PasswordHash = HASHBYTES('SHA2_256', N'$escaped')
+    WHERE Id = 1;
+ELSE
+    INSERT dbo.APS_DatabaseMaintenance (Id, PasswordHash)
+    VALUES (1, HASHBYTES('SHA2_256', N'$escaped'));
+"@
+
+    Invoke-SqlCmdText -SqlCmd $SqlCmd -DatabaseName $DatabaseName @AuthArgs -Sql $sql
+}
+
 function Invoke-SqlCmdText {
     param(
         [string] $SqlCmd,
@@ -156,7 +226,8 @@ function Invoke-SqlCmdText {
         [string] $UserName,
         [string] $PasswordPlain,
         [switch] $IntegratedSecurity,
-        [int] $QueryTimeout = 0
+        [int] $QueryTimeout = 0,
+        [string] $Sql
     )
 
     $args = @(
@@ -231,6 +302,12 @@ if ([string]::IsNullOrWhiteSpace($ConnectionString)) {
     $ConnectionString = Get-ConnectionFromAppSettings -Path $AppSettingsPath
 }
 
+$configuredMaintenancePassword = Get-MaintenancePasswordFromAppSettings -Path $AppSettingsPath
+$maintenancePassword = Assert-MaintenancePassword `
+    -ConfiguredPassword $configuredMaintenancePassword `
+    -ProvidedPassword $MaintenancePassword `
+    -AllowPrompt:(-not $Confirm)
+
 $conn = Parse-ConnectionString -Cs $ConnectionString
 
 if ($Server) { $conn.Server = $Server }
@@ -295,8 +372,12 @@ if (-not $SkipTruncate) {
     }
     Invoke-SqlCmdFile -SqlCmd $sqlcmd -DatabaseName $conn.Database @authArgs -InputFile $TruncateProcScript
 
+    Write-Host '[2.5/3] 同步维护密码哈希...' -ForegroundColor Green
+    Sync-MaintenancePasswordHash -SqlCmd $sqlcmd -AuthArgs $authArgs -DatabaseName $conn.Database -MaintenancePassword $maintenancePassword
+
     Write-Host '[3/3] 清空匹配前缀的 APS 表...' -ForegroundColor Green
-    Invoke-SqlCmdText -SqlCmd $sqlcmd -DatabaseName $conn.Database @authArgs -Sql 'EXEC dbo.P_APS_TruncateCoreTablesAfterRestore;'
+    $pwdForSql = $maintenancePassword.Replace("'", "''")
+    Invoke-SqlCmdText -SqlCmd $sqlcmd -DatabaseName $conn.Database @authArgs -Sql "EXEC dbo.P_APS_TruncateCoreTablesAfterRestore @ConfirmPassword=N'$pwdForSql';"
     Write-Host '      匹配前缀的表已 TRUNCATE（详见 sqlcmd 输出的表名列表）。' -ForegroundColor Green
 }
 else {

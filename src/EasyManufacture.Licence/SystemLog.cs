@@ -31,12 +31,16 @@ public class SystemLog
     {
         try
         {
+            string? menuName = null;
             var ctx = LicenceRuntime.Http.HttpContext;
             if (ctx != null)
             {
                 var menuHeader = ctx.Request.Headers["Vuemenunameforlog"].FirstOrDefault();
                 if (!string.IsNullOrEmpty(menuHeader))
-                    content += "。菜单地址：" + Uri.UnescapeDataString(menuHeader);
+                {
+                    menuName = Uri.UnescapeDataString(menuHeader);
+                    content += "。菜单地址：" + menuName;
+                }
             }
 
             if (parameters != null)
@@ -54,7 +58,7 @@ public class SystemLog
             var createdByName = dev_Account?.Name;
             var elapsed = spents == 0 ? Math.Round(_sw.Elapsed.TotalSeconds, 1) : spents;
 
-            InsertLog(systemLogType.ToString(), content, url, createdBy, createdByName, elapsed);
+            InsertLog(systemLogType.ToString(), content, url, createdBy, createdByName, elapsed, menuName);
             _sw.Restart();
         }
         catch
@@ -63,14 +67,21 @@ public class SystemLog
         }
     }
 
-    private static void InsertLog(string title, string content, string url, string? createdBy, string? createdByName, double spents)
+    private static void InsertLog(
+        string title,
+        string content,
+        string url,
+        string? createdBy,
+        string? createdByName,
+        double spents,
+        string? menuName)
     {
         if (string.IsNullOrEmpty(LicenceRuntime.SqlConnectionString))
             return;
 
         const string sql = """
-            INSERT INTO Dev_SysLog (Title, Content, Url, CreatedBy, CreatedByName, CreatedOn, Spents)
-            VALUES (@Title, @Content, @Url, @CreatedBy, @CreatedByName, @CreatedOn, @Spents)
+            INSERT INTO Dev_SysLog (Title, Content, Url, CreatedBy, CreatedByName, CreatedOn, Spents, MenuName)
+            VALUES (@Title, @Content, @Url, @CreatedBy, @CreatedByName, @CreatedOn, @Spents, @MenuName)
             """;
 
         using var conn = new SqlConnection(LicenceRuntime.SqlConnectionString);
@@ -82,6 +93,10 @@ public class SystemLog
         cmd.Parameters.AddWithValue("@CreatedByName", (object?)createdByName ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@CreatedOn", DateTime.Now);
         cmd.Parameters.AddWithValue("@Spents", spents);
+        var menuValue = string.IsNullOrEmpty(menuName)
+            ? (object)DBNull.Value
+            : (menuName.Length > 200 ? menuName[..200] : menuName);
+        cmd.Parameters.AddWithValue("@MenuName", menuValue);
         conn.Open();
         cmd.ExecuteNonQuery();
     }

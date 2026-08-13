@@ -201,7 +201,12 @@ namespace EasyManufacture.Entitys
             get
             {
              
-                if (this.Capacity > 0&& TotalHours>0&&this.Operation!= "联动计划" && this.Operation != "忽略工时")
+                
+                if (this.ExpectTime.HasValue && this.Operation != "联动计划" && this.Operation != "忽略工时"&& TotalHours>0)
+                {
+                    workload = ExpectTime.GetValueOrDefault() / TotalHours;
+                }
+                else if (this.Capacity > 0 && TotalHours > 0 && this.Operation != "联动计划" && this.Operation != "忽略工时")
                 {
                     workload = PlanQty.GetValueOrDefault() / (Capacity.GetValueOrDefault(1) * TotalHours);
                 }

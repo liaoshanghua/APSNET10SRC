@@ -272,10 +272,13 @@ WHERE ProducedDate >= CAST(GETDATE() AS DATE)");
         switch (w)
         {
             case "=":
+                // 空/NULL 不参与数值比较（避免 TryParse 失败后 d=0 误命中 =0）
+                if (IsBlankCell(rowData, colorField))
+                    return false;
                 if (IsNumericColumn(dtData.Columns[colorField]))
                 {
-                    decimal.TryParse(rowData[colorField]?.ToString(), out var d);
-                    return d == decimal.Parse(reducedValue);
+                    return decimal.TryParse(rowData[colorField]?.ToString(), out var d)
+                        && d == decimal.Parse(reducedValue);
                 }
                 return rowData[colorField]?.ToString() == reducedValue;
             case "L":
@@ -283,20 +286,27 @@ WHERE ProducedDate >= CAST(GETDATE() AS DATE)");
             case "R":
                 return rowData[colorField]?.ToString()?.EndsWith(reducedValue) == true;
             case "!":
+                // 空/NULL 视为不等于具体值
+                if (IsBlankCell(rowData, colorField))
+                    return true;
                 if (IsNumericColumn(dtData.Columns[colorField]))
                 {
-                    decimal.TryParse(rowData[colorField]?.ToString(), out var d);
-                    return d != decimal.Parse(reducedValue);
+                    return !decimal.TryParse(rowData[colorField]?.ToString(), out var d)
+                        || d != decimal.Parse(reducedValue);
                 }
                 return rowData[colorField]?.ToString() != reducedValue;
             case "I":
                 return rowData[colorField]?.ToString()?.Contains(reducedValue) == true;
             case ">":
-                decimal.TryParse(rowData[colorField]?.ToString(), out var gt);
-                return gt > decimal.Parse(reducedValue);
+                if (IsBlankCell(rowData, colorField))
+                    return false;
+                return decimal.TryParse(rowData[colorField]?.ToString(), out var gt)
+                    && gt > decimal.Parse(reducedValue);
             case "<":
-                decimal.TryParse(rowData[colorField]?.ToString(), out var lt);
-                return lt < decimal.Parse(reducedValue);
+                if (IsBlankCell(rowData, colorField))
+                    return false;
+                return decimal.TryParse(rowData[colorField]?.ToString(), out var lt)
+                    && lt < decimal.Parse(reducedValue);
             case "S":
                 var expr = reducedValue;
                 foreach (DataColumn dc in dtData.Columns)
@@ -318,6 +328,10 @@ WHERE ProducedDate >= CAST(GETDATE() AS DATE)");
                 return false;
         }
     }
+
+    private static bool IsBlankCell(DataRow rowData, string colorField) =>
+        rowData[colorField] == DBNull.Value
+        || string.IsNullOrEmpty(rowData[colorField]?.ToString());
 
     private static bool IsNumericColumn(DataColumn column) =>
         column.DataType == typeof(decimal) || column.DataType == typeof(decimal?)
